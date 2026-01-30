@@ -10,6 +10,7 @@ import { initializeStorage, readConfig, writeConfig, resetConfig, getRecentMessa
 import { initializeBot, setupBotHandlers, startBot, getBotInfo } from './bot.js';
 import { getAvailableStyles, getStylePresetDescription } from './llm.js';
 import { getNextIcebreakerDue } from './icebreaker.js';
+import { t, translations } from './translations.js';
 import dotenv from 'dotenv';
 
 // Load environment variables
@@ -77,20 +78,23 @@ app.get('/', async (req, res) => {
     const nextIcebreaker = await getNextIcebreakerDue();
     const botInfo = await getBotInfo();
     
+    // Get language from config (default to 'en')
+    const lang = config.language || 'en';
+    
     // Format next icebreaker time
-    let nextIcebreakerText = 'No messages yet';
+    let nextIcebreakerText = t(lang, 'noMessagesYet');
     if (nextIcebreaker) {
       const now = new Date();
       const diffDays = Math.ceil((nextIcebreaker - now) / (1000 * 60 * 60 * 24));
       if (diffDays <= 0) {
-        nextIcebreakerText = 'Due now';
+        nextIcebreakerText = t(lang, 'dueNow');
       } else {
-        nextIcebreakerText = `~${diffDays} days`;
+        nextIcebreakerText = `~${diffDays} ${t(lang, 'days')}`;
       }
     }
     
     const html = `<!DOCTYPE html>
-<html lang="en">
+<html lang="${lang}">
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -127,6 +131,7 @@ app.get('/', async (req, res) => {
       color: white;
       padding: 30px;
       text-align: center;
+      position: relative;
     }
     
     .header h1 {
@@ -137,6 +142,28 @@ app.get('/', async (req, res) => {
     .header p {
       font-size: 14px;
       opacity: 0.9;
+    }
+    
+    .language-selector {
+      position: absolute;
+      top: 20px;
+      right: 20px;
+    }
+    
+    .language-selector select {
+      background: rgba(255, 255, 255, 0.2);
+      color: white;
+      border: 1px solid rgba(255, 255, 255, 0.3);
+      padding: 8px 12px;
+      border-radius: 6px;
+      font-size: 14px;
+      cursor: pointer;
+      backdrop-filter: blur(10px);
+    }
+    
+    .language-selector select option {
+      background: white;
+      color: #333;
     }
     
     .content {
@@ -314,43 +341,55 @@ app.get('/', async (req, res) => {
       .status-grid {
         grid-template-columns: 1fr;
       }
+      
+      .language-selector {
+        position: static;
+        margin-bottom: 15px;
+        text-align: center;
+      }
     }
   </style>
 </head>
 <body>
   <div class="container">
     <div class="header">
-      <h1>🤖 Telegram Facilitator Bot</h1>
-      <p>1-to-1 duplex messaging with AI stylization</p>
-      ${botInfo ? `<p style="margin-top: 10px; font-size: 12px;">@${botInfo.username}</p>` : ''}
+      <div class="language-selector">
+        <select id="languageSelect" onchange="changeLanguage()">
+          <option value="en" ${lang === 'en' ? 'selected' : ''}>English</option>
+          <option value="ru" ${lang === 'ru' ? 'selected' : ''}>Русский</option>
+        </select>
+      </div>
+      <h1>${t(lang, 'title')}</h1>
+      <p>${t(lang, 'subtitle')}</p>
+      ${botInfo ? `<p style="margin-top: 10px; font-size: 12px;"><a href="https://t.me/${botInfo.username}" target="_blank" style="color: white; text-decoration: underline;">@${botInfo.username}</a></p>` : ''}
     </div>
     
     <div class="content">
-      <div id="successMessage">✓ Settings saved successfully!</div>
+      <div id="successMessage">${t(lang, 'settingsSaved')}</div>
       
       <div class="section">
-        <h2 class="section-title">👥 Connected Users</h2>
+        <h2 class="section-title">${t(lang, 'connectedUsers')}</h2>
         <div class="status-grid">
           <div class="status-card ${config.userA.username ? '' : 'not-set'}">
-            <h3>User A</h3>
-            <p>${config.userA.username || 'Not registered'}</p>
+            <h3>${t(lang, 'userA')}</h3>
+            <p>${config.userA.username || t(lang, 'notRegistered')}</p>
           </div>
           <div class="status-card ${config.userB.username ? '' : 'not-set'}">
-            <h3>User B</h3>
-            <p>${config.userB.username || 'Not registered'}</p>
+            <h3>${t(lang, 'userB')}</h3>
+            <p>${config.userB.username || t(lang, 'notRegistered')}</p>
           </div>
           <div class="status-card">
-            <h3>Next Icebreaker</h3>
+            <h3>${t(lang, 'nextIcebreaker')}</h3>
             <p>${nextIcebreakerText}</p>
           </div>
         </div>
       </div>
       
       <div class="section">
-        <h2 class="section-title">⚙️ Settings</h2>
+        <h2 class="section-title">${t(lang, 'settings')}</h2>
         <form id="settingsForm">
           <div class="form-group">
-            <label for="style">Message Style</label>
+            <label for="style">${t(lang, 'messageStyle')}</label>
             <select id="style" name="style" required>
               ${getAvailableStyles().map(style => `
                 <option value="${style}" ${config.style === style ? 'selected' : ''}>
@@ -362,52 +401,52 @@ app.get('/', async (req, res) => {
           </div>
           
           <div class="form-group" id="customStyleGroup" style="display: ${config.style === 'custom' ? 'block' : 'none'};">
-            <label for="customStyle">Custom Style Description</label>
+            <label for="customStyle">${t(lang, 'customStyle')}</label>
             <input type="text" id="customStyle" name="customStyle" 
                    value="${config.customStyle}" 
-                   placeholder="e.g., witty, sarcastic, philosophical">
-            <p class="help-text">Describe how messages should be rewritten</p>
+                   placeholder="${t(lang, 'customStylePlaceholder')}">
+            <p class="help-text">${t(lang, 'customStyleHelp')}</p>
           </div>
           
           <div class="form-group">
-            <label for="icebreakerPeriod">Icebreaker Period (days)</label>
+            <label for="icebreakerPeriod">${t(lang, 'icebreakerPeriod')}</label>
             <input type="number" id="icebreakerPeriod" name="icebreakerPeriod" 
                    value="${config.icebreakerPeriodDays}" 
                    min="3" max="30" required>
-            <p class="help-text">Random interval: ±2 days from this value (minimum 3 days)</p>
+            <p class="help-text">${t(lang, 'icebreakerPeriodHelp')}</p>
           </div>
           
-          <button type="submit" class="btn">Save Settings</button>
+          <button type="submit" class="btn">${t(lang, 'saveSettings')}</button>
         </form>
       </div>
       
       <div class="section">
-        <h2 class="section-title">💬 Recent Messages</h2>
+        <h2 class="section-title">${t(lang, 'recentMessages')}</h2>
         <div class="message-preview">
-          <h4>Last 5 stylized messages:</h4>
+          <h4>${t(lang, 'lastMessages')}</h4>
           ${recentMessages.length > 0 ? recentMessages.map(msg => `
             <div class="message-item">
-              <div class="sender">User ${msg.senderRole}</div>
+              <div class="sender">${t(lang, 'user')} ${msg.senderRole}</div>
               <div class="text">${msg.stylizedText}</div>
               <div class="time">${new Date(msg.timestamp).toLocaleString()}</div>
             </div>
-          `).join('') : '<p style="color: #999; font-style: italic;">No messages yet</p>'}
+          `).join('') : `<p style="color: #999; font-style: italic;">${t(lang, 'noMessages')}</p>`}
         </div>
       </div>
       
       <div class="section">
-        <h2 class="section-title">🔄 Reset</h2>
+        <h2 class="section-title">${t(lang, 'reset')}</h2>
         <form id="resetForm">
           <p style="margin-bottom: 15px; color: #666; font-size: 14px;">
-            Reset all settings to defaults. This will not delete message history.
+            ${t(lang, 'resetDescription')}
           </p>
-          <button type="submit" class="btn btn-secondary">Reset Configuration</button>
+          <button type="submit" class="btn btn-secondary">${t(lang, 'resetConfig')}</button>
         </form>
       </div>
     </div>
     
     <div class="footer">
-      <p>No original message inspection • Vercel-friendly</p>
+      <p>${t(lang, 'footer')}</p>
     </div>
   </div>
   
@@ -417,6 +456,26 @@ app.get('/', async (req, res) => {
       const customGroup = document.getElementById('customStyleGroup');
       customGroup.style.display = this.value === 'custom' ? 'block' : 'none';
     });
+    
+    // Change language
+    async function changeLanguage() {
+      const lang = document.getElementById('languageSelect').value;
+      try {
+        const response = await fetch('/api/config', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ language: lang })
+        });
+        
+        if (response.ok) {
+          location.reload();
+        } else {
+          alert('Failed to change language');
+        }
+      } catch (error) {
+        alert('Error changing language: ' + error.message);
+      }
+    }
     
     // Handle settings form submission
     document.getElementById('settingsForm').addEventListener('submit', async function(e) {
@@ -442,10 +501,10 @@ app.get('/', async (req, res) => {
             document.getElementById('successMessage').style.display = 'none';
           }, 3000);
         } else {
-          alert('Failed to save settings');
+          alert('${t(lang, 'saveFailed')}');
         }
       } catch (error) {
-        alert('Error saving settings: ' + error.message);
+        alert('${t(lang, 'saveError')}' + error.message);
       }
     });
     
@@ -453,7 +512,7 @@ app.get('/', async (req, res) => {
     document.getElementById('resetForm').addEventListener('submit', async function(e) {
       e.preventDefault();
       
-      if (!confirm('Are you sure you want to reset all configuration?')) {
+      if (!confirm('${t(lang, 'resetConfirm')}')) {
         return;
       }
       
@@ -465,10 +524,10 @@ app.get('/', async (req, res) => {
         if (response.ok) {
           location.reload();
         } else {
-          alert('Failed to reset configuration');
+          alert('${t(lang, 'resetFailed')}');
         }
       } catch (error) {
-        alert('Error resetting configuration: ' + error.message);
+        alert('${t(lang, 'resetError')}' + error.message);
       }
     });
   </script>
@@ -497,7 +556,7 @@ app.get('/api/config', async (req, res) => {
 // API: Update configuration
 app.post('/api/config', async (req, res) => {
   try {
-    const { style, customStyle, icebreakerPeriodDays } = req.body;
+    const { style, customStyle, icebreakerPeriodDays, language } = req.body;
     
     const config = await readConfig();
     
@@ -505,6 +564,9 @@ app.post('/api/config', async (req, res) => {
     if (customStyle !== undefined) config.customStyle = customStyle;
     if (icebreakerPeriodDays) {
       config.icebreakerPeriodDays = Math.max(3, Math.min(30, icebreakerPeriodDays));
+    }
+    if (language && (language === 'en' || language === 'ru')) {
+      config.language = language;
     }
     
     await writeConfig(config);
