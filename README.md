@@ -339,10 +339,4 @@ npm test
 - **[`src/icebreaker.js`](src/icebreaker.js)**: Icebreaker timing and generation logic
 - **[`src/storage.js`](src/storage.js)**: File-based persistence layer
 
-## License
 
-MIT
-
-## Contributing
-
-Contributions are welcome! Please feel free to submit a Pull Request.
