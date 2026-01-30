@@ -393,10 +393,10 @@ app.get('/', async (req, res) => {
             <select id="style" name="style" required>
               ${getAvailableStyles().map(style => `
                 <option value="${style}" ${config.style === style ? 'selected' : ''}>
-                  ${style.charAt(0).toUpperCase() + style.slice(1)} - ${getStylePresetDescription(style)}
+                  ${t(lang, 'style' + style.charAt(0).toUpperCase() + style.slice(1))} - ${t(lang, 'style' + style.charAt(0).toUpperCase() + style.slice(1) + 'Desc')}
                 </option>
               `).join('')}
-              <option value="custom" ${config.style === 'custom' ? 'selected' : ''}>Custom</option>
+              <option value="custom" ${config.style === 'custom' ? 'selected' : ''}>${t(lang, 'custom')}</option>
             </select>
           </div>
           
@@ -406,6 +406,50 @@ app.get('/', async (req, res) => {
                    value="${config.customStyle}" 
                    placeholder="${t(lang, 'customStylePlaceholder')}">
             <p class="help-text">${t(lang, 'customStyleHelp')}</p>
+          </div>
+          
+          <div class="form-group">
+            <label for="userALanguage">${t(lang, 'userALanguage')}</label>
+            <select id="userALanguage" name="userALanguage" required onchange="toggleCustomLanguage('A')">
+              <option value="auto" ${config.userA.language === 'auto' ? 'selected' : ''}>${t(lang, 'auto')}</option>
+              <option value="en" ${config.userA.language === 'en' ? 'selected' : ''}>${t(lang, 'english')}</option>
+              <option value="ru" ${config.userA.language === 'ru' ? 'selected' : ''}>${t(lang, 'russian')}</option>
+              <option value="es" ${config.userA.language === 'es' ? 'selected' : ''}>Español</option>
+              <option value="fr" ${config.userA.language === 'fr' ? 'selected' : ''}>Français</option>
+              <option value="de" ${config.userA.language === 'de' ? 'selected' : ''}>Deutsch</option>
+              <option value="custom" ${config.userA.language === 'custom' ? 'selected' : ''}>${t(lang, 'custom')}</option>
+            </select>
+            <p class="help-text">${config.userA.language === 'auto' ? t(lang, 'autoDetectHelp') : (lang === 'ru' ? 'Язык для сообщений, отправляемых Пользователю A' : 'Language for messages sent to User A')}</p>
+          </div>
+          
+          <div class="form-group" id="userACustomLanguageGroup" style="display: ${config.userA.language === 'custom' ? 'block' : 'none'};">
+            <label for="userACustomLanguage">${lang === 'ru' ? 'Кастомный язык для Пользователя A' : 'Custom Language for User A'}</label>
+            <input type="text" id="userACustomLanguage" name="userACustomLanguage" 
+                   value="${config.userA.customLanguage || ''}" 
+                   placeholder="${lang === 'ru' ? 'например: Японский, Китайский, Итальянский' : 'e.g., Japanese, Chinese, Italian'}">
+            <p class="help-text">${lang === 'ru' ? 'Укажите название языка (например: Японский, Китайский, Итальянский)' : 'Specify the language name (e.g., Japanese, Chinese, Italian)'}</p>
+          </div>
+          
+          <div class="form-group">
+            <label for="userBLanguage">${t(lang, 'userBLanguage')}</label>
+            <select id="userBLanguage" name="userBLanguage" required onchange="toggleCustomLanguage('B')">
+              <option value="auto" ${config.userB.language === 'auto' ? 'selected' : ''}>${t(lang, 'auto')}</option>
+              <option value="en" ${config.userB.language === 'en' ? 'selected' : ''}>${t(lang, 'english')}</option>
+              <option value="ru" ${config.userB.language === 'ru' ? 'selected' : ''}>${t(lang, 'russian')}</option>
+              <option value="es" ${config.userB.language === 'es' ? 'selected' : ''}>Español</option>
+              <option value="fr" ${config.userB.language === 'fr' ? 'selected' : ''}>Français</option>
+              <option value="de" ${config.userB.language === 'de' ? 'selected' : ''}>Deutsch</option>
+              <option value="custom" ${config.userB.language === 'custom' ? 'selected' : ''}>${t(lang, 'custom')}</option>
+            </select>
+            <p class="help-text">${config.userB.language === 'auto' ? t(lang, 'autoDetectHelp') : (lang === 'ru' ? 'Язык для сообщений, отправляемых Пользователю B' : 'Language for messages sent to User B')}</p>
+          </div>
+          
+          <div class="form-group" id="userBCustomLanguageGroup" style="display: ${config.userB.language === 'custom' ? 'block' : 'none'};">
+            <label for="userBCustomLanguage">${lang === 'ru' ? 'Кастомный язык для Пользователя B' : 'Custom Language for User B'}</label>
+            <input type="text" id="userBCustomLanguage" name="userBCustomLanguage" 
+                   value="${config.userB.customLanguage || ''}" 
+                   placeholder="${lang === 'ru' ? 'например: Японский, Китайский, Итальянский' : 'e.g., Japanese, Chinese, Italian'}">
+            <p class="help-text">${lang === 'ru' ? 'Укажите название языка (например: Японский, Китайский, Итальянский)' : 'Specify the language name (e.g., Japanese, Chinese, Italian)'}</p>
           </div>
           
           <div class="form-group">
@@ -451,11 +495,37 @@ app.get('/', async (req, res) => {
   </div>
   
   <script>
+    // Store translations for client-side use
+    const translations = {
+      autoDetectHelp: '${t(lang, 'autoDetectHelp')}',
+      customLanguageHelp: '${lang === 'ru' ? 'Укажите название языка (например: Японский, Китайский, Итальянский)' : 'Specify the language name (e.g., Japanese, Chinese, Italian)'}',
+      languageHelp: '${lang === 'ru' ? 'Язык для сообщений, отправляемых Пользователю ' : 'Language for messages sent to User '}'
+    };
+    
     // Show/hide custom style input based on selection
     document.getElementById('style').addEventListener('change', function() {
       const customGroup = document.getElementById('customStyleGroup');
       customGroup.style.display = this.value === 'custom' ? 'block' : 'none';
     });
+    
+    // Show/hide custom language inputs based on selection
+    function toggleCustomLanguage(user) {
+      const select = document.getElementById('user' + user + 'Language');
+      const customGroup = document.getElementById('user' + user + 'CustomLanguageGroup');
+      const helpText = select.parentElement.querySelector('.help-text');
+      
+      // Show custom language input only when 'custom' is selected
+      customGroup.style.display = select.value === 'custom' ? 'block' : 'none';
+      
+      // Update help text based on selection
+      if (select.value === 'auto') {
+        helpText.textContent = translations.autoDetectHelp;
+      } else if (select.value === 'custom') {
+        helpText.textContent = translations.customLanguageHelp;
+      } else {
+        helpText.textContent = translations.languageHelp + user;
+      }
+    }
     
     // Change language
     async function changeLanguage() {
@@ -485,6 +555,10 @@ app.get('/', async (req, res) => {
       const data = {
         style: formData.get('style'),
         customStyle: formData.get('customStyle') || '',
+        userALanguage: formData.get('userALanguage'),
+        userACustomLanguage: formData.get('userACustomLanguage') || '',
+        userBLanguage: formData.get('userBLanguage'),
+        userBCustomLanguage: formData.get('userBCustomLanguage') || '',
         icebreakerPeriodDays: parseInt(formData.get('icebreakerPeriod'))
       };
       
@@ -556,12 +630,20 @@ app.get('/api/config', async (req, res) => {
 // API: Update configuration
 app.post('/api/config', async (req, res) => {
   try {
-    const { style, customStyle, icebreakerPeriodDays, language } = req.body;
+    const { style, customStyle, userALanguage, userACustomLanguage, userBLanguage, userBCustomLanguage, icebreakerPeriodDays, language } = req.body;
     
     const config = await readConfig();
     
     if (style) config.style = style;
     if (customStyle !== undefined) config.customStyle = customStyle;
+    if (userALanguage) {
+      config.userA.language = userALanguage;
+      config.userA.customLanguage = userACustomLanguage || '';
+    }
+    if (userBLanguage) {
+      config.userB.language = userBLanguage;
+      config.userB.customLanguage = userBCustomLanguage || '';
+    }
     if (icebreakerPeriodDays) {
       config.icebreakerPeriodDays = Math.max(3, Math.min(30, icebreakerPeriodDays));
     }

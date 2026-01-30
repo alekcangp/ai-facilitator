@@ -6,7 +6,7 @@
  */
 
 import TelegramBot from 'node-telegram-bot-api';
-import { stylizeMessage } from './llm.js';
+import { stylizeMessage, detectLanguageWithLLM } from './llm.js';
 import { triggerIcebreakerCheck } from './icebreaker.js';
 import {
   readConfig,
@@ -14,6 +14,7 @@ import {
   addMessage,
   readMessages
 } from './storage.js';
+import { t } from './translations.js';
 
 // Bot instance (will be initialized)
 let bot = null;
@@ -134,6 +135,9 @@ export async function handleMessage(msg) {
   try {
     const config = await readConfig();
     
+    // Get language from config (default to 'en')
+    const lang = config.language || 'en';
+    
     // Get sender info
     const telegramId = msg.from.id;
     const username = msg.from.username || msg.from.first_name || 'Unknown';
@@ -157,9 +161,7 @@ export async function handleMessage(msg) {
         
         await bot.sendMessage(
           telegramId,
-          '👋 Welcome! You are now registered as User A.\n\n' +
-          'Please share this bot with the person you want to connect with. ' +
-          'They will be automatically registered as User B.'
+          t(lang, 'welcomeUserA')
         );
         return;
       }
@@ -172,8 +174,7 @@ export async function handleMessage(msg) {
         
         await bot.sendMessage(
           telegramId,
-          '👋 Welcome! You are now registered as User B.\n\n' +
-          'You can now start messaging! Your messages will be forwarded to User A.'
+          t(lang, 'welcomeUserB')
         );
         return;
       }
@@ -188,16 +189,29 @@ export async function handleMessage(msg) {
     if (!recipientId) {
       await bot.sendMessage(
         telegramId,
-        '⚠️ The other user has not registered yet. Please share this bot with them.'
+        t(lang, 'otherUserNotRegistered')
       );
       return;
     }
     
-    // Stylize the message
+    // Get recipient's role and language
+    const recipientRole = senderRole === 'A' ? 'B' : 'A';
+    let recipientLanguage = recipientRole === 'A' 
+      ? (config.userA.language || 'auto') 
+      : (config.userB.language || 'auto');
+    
+    // If language is 'auto', detect it using LLM
+    if (recipientLanguage === 'auto') {
+      recipientLanguage = await detectLanguageWithLLM(messageText);
+      console.log(`Auto-detected language for User ${recipientRole}: ${recipientLanguage}`);
+    }
+    
+    // Stylize the message in recipient's language
     const stylizedText = await stylizeMessage(
       messageText,
       config.style,
-      config.customStyle
+      config.customStyle,
+      recipientLanguage
     );
     
     // Store the stylized message (never the original)

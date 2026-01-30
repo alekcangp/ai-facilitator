@@ -55,14 +55,20 @@ export async function checkIcebreakerDue() {
       // Determine which user should receive the icebreaker (opposite of last sender)
       const recipientRole = lastSenderRole === 'A' ? 'B' : 'A';
       
+      // Get recipient's language
+      const recipientLanguage = recipientRole === 'A' 
+        ? (config.userA.language || 'en') 
+        : (config.userB.language || 'en');
+      
       // Get recent messages for context
       const recentMessages = await getRecentMessages(20);
       
-      // Generate icebreaker
+      // Generate icebreaker in recipient's language
       const icebreakerText = await generateIcebreaker(
         recentMessages,
         config.style,
-        config.customStyle
+        config.customStyle,
+        recipientLanguage
       );
       
       // Update last check time

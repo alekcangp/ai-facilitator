@@ -13,6 +13,8 @@ export const translations = {
     connectedUsers: '👥 Connected Users',
     userA: 'User A',
     userB: 'User B',
+    userALanguage: 'User A Language',
+    userBLanguage: 'User B Language',
     nextIcebreaker: 'Next Icebreaker',
     notRegistered: 'Not registered',
     noMessagesYet: 'No messages yet',
@@ -29,6 +31,25 @@ export const translations = {
     icebreakerPeriodHelp: 'Random interval: ±2 days from this value (minimum 3 days)',
     saveSettings: 'Save Settings',
     language: 'Language',
+    custom: 'Custom',
+    
+    // Style names
+    styleFriendly: 'Friendly',
+    styleFormal: 'Formal',
+    stylePlayful: 'Playful',
+    styleRomantic: 'Romantic',
+    styleIntellectual: 'Intellectual',
+    styleCasual: 'Casual',
+    stylePoetic: 'Poetic',
+    
+    // Style descriptions
+    styleFriendlyDesc: 'warm, casual, and conversational',
+    styleFormalDesc: 'professional, polite, and respectful',
+    stylePlayfulDesc: 'fun, lighthearted, and enthusiastic',
+    styleRomanticDesc: 'affectionate, caring, and intimate',
+    styleIntellectualDesc: 'thoughtful, analytical, and articulate',
+    styleCasualDesc: 'relaxed, informal, and natural',
+    stylePoeticDesc: 'expressive, metaphorical, and artistic',
     
     // UI - Recent Messages
     recentMessages: '💬 Recent Messages',
@@ -58,7 +79,10 @@ export const translations = {
     
     // Language names
     english: 'English',
-    russian: 'Russian'
+    russian: 'Russian',
+    auto: 'Auto (detect)',
+    autoDetect: 'Auto-detect language using AI',
+    autoDetectHelp: 'The bot will automatically detect the language of incoming messages'
   },
   
   ru: {
@@ -70,6 +94,8 @@ export const translations = {
     connectedUsers: '👥 Подключенные пользователи',
     userA: 'Пользователь A',
     userB: 'Пользователь B',
+    userALanguage: 'Язык пользователя A',
+    userBLanguage: 'Язык пользователя B',
     nextIcebreaker: 'Следующий ледокол',
     notRegistered: 'Не зарегистрирован',
     noMessagesYet: 'Сообщений пока нет',
@@ -86,6 +112,25 @@ export const translations = {
     icebreakerPeriodHelp: 'Случайный интервал: ±2 дня от этого значения (минимум 3 дня)',
     saveSettings: 'Сохранить настройки',
     language: 'Язык',
+    custom: 'Кастомный',
+    
+    // Style names
+    styleFriendly: 'Дружелюбный',
+    styleFormal: 'Формальный',
+    stylePlayful: 'Игривый',
+    styleRomantic: 'Романтичный',
+    styleIntellectual: 'Интеллектуальный',
+    styleCasual: 'Непринужденный',
+    stylePoetic: 'Поэтичный',
+    
+    // Style descriptions
+    styleFriendlyDesc: 'теплый, непринужденный и разговорный',
+    styleFormalDesc: 'профессиональный, вежливый и уважительный',
+    stylePlayfulDesc: 'забавный, легкомысленный и энтузиастичный',
+    styleRomanticDesc: 'нежный, заботливый и интимный',
+    styleIntellectualDesc: 'обдуманный, аналитический и выразительный',
+    styleCasualDesc: 'расслабленный, неформальный и естественный',
+    stylePoeticDesc: 'экспрессивный, метафоричный и художественный',
     
     // UI - Recent Messages
     recentMessages: '💬 Последние сообщения',
@@ -115,7 +160,10 @@ export const translations = {
     
     // Language names
     english: 'English',
-    russian: 'Русский'
+    russian: 'Русский',
+    auto: 'Авто (определение)',
+    autoDetect: 'Автоопределение языка с помощью ИИ',
+    autoDetectHelp: 'Бот будет автоматически определять язык входящих сообщений'
   }
 };
 

@@ -18,11 +18,15 @@ const MESSAGES_FILE = path.join(DATA_DIR, 'messages.json');
 const DEFAULT_CONFIG = {
   userA: {
     telegramId: null,
-    username: null
+    username: null,
+    language: 'auto', // Language for User A (auto = detect using LLM)
+    customLanguage: '' // Custom language name if language is 'custom'
   },
   userB: {
     telegramId: null,
-    username: null
+    username: null,
+    language: 'auto', // Language for User B (auto = detect using LLM)
+    customLanguage: '' // Custom language name if language is 'custom'
   },
   style: 'friendly',
   customStyle: '',
