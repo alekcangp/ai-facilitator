@@ -1,0 +1,22 @@
+# Dependencies
+node_modules/
+
+# Environment variables
+.env
+
+# Data directory (contains user messages and config)
+data/
+
+# Logs
+*.log
+npm-debug.log*
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
