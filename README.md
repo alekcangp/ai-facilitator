@@ -225,22 +225,6 @@ Icebreakers are sent automatically when the conversation is inactive:
 
 Storage is file-based (JSON) and compatible with Vercel's filesystem constraints.
 
-## API Endpoints
-
-### Web UI
-- `GET /` - Main configuration page
-
-### Telegram Webhook (Vercel)
-- `POST /api/webhook` - Telegram webhook endpoint
-
-### Configuration API
-- `GET /api/config` - Get current configuration
-- `POST /api/config` - Update configuration
-- `POST /api/config/reset` - Reset to defaults
-
-### Health Check
-- `GET /health` - Health status
-
 ## Environment Variables
 
 | Variable | Required | Description |
@@ -249,94 +233,5 @@ Storage is file-based (JSON) and compatible with Vercel's filesystem constraints
 | `GEMINI_API_KEY` | Yes | Google Gemini API key |
 | `PORT` | No | Server port (default: 3000) |
 
-## Troubleshooting
-
-### Bot not responding
-
-1. Check that `BOT_TOKEN` is set correctly
-2. Verify the bot is running (check logs)
-3. Ensure users have started the bot (sent `/start`)
-
-### "Conflict: terminated by other getUpdates request" (Error 409)
-
-**What this means:**
-Telegram allows ONLY ONE active consumer of updates per bot token. When you see this error, two things are trying to read updates at the same time.
-
-**Common causes:**
-- Two Node.js processes running the bot locally
-- Local dev server + Vercel deployment both active
-- Polling + webhook both enabled on the same bot
-- Multiple Vercel serverless functions spinning up
-
-**Solution:**
-1. Stop ALL running bot instances (Ctrl+C in all terminals)
-2. If deployed to Vercel, either:
-   - Delete the Vercel deployment, OR
-   - Use a different bot token for local development
-3. Wait 10-15 seconds for Telegram to release the connection
-4. Start only ONE instance:
-   ```bash
-   npm start
-   ```
-
-**Code protections:**
-The bot includes initialization guards to prevent multiple instances:
-- Bot initialization is tracked and prevented if already running
-- Server initialization only happens once per process
-- Clear logging shows when initialization is skipped
-
-**Prevention:**
-- Only run one bot instance per bot token at any time
-- Use different bot tokens for local dev vs production
-- Never run polling and webhook simultaneously on the same bot
-
-### Polling errors (local development)
-
-If you see polling errors when running locally:
-
-```bash
-# Clear any existing webhook
-npm run clear-webhook
-
-# Then restart the bot
-npm start
-```
-
-This happens when a webhook is set from a previous Vercel deployment. The bot cannot use polling while a webhook is active.
-
-### Messages not being stylized
-
-1. Check that `GEMINI_API_KEY` is set correctly
-2. Verify the API key has access to Gemma model
-3. Check logs for LLM errors
-
-### Icebreakers not sending
-
-1. Ensure at least one message has been exchanged
-2. Check that the icebreaker period is configured
-3. Icebreakers are checked on each incoming message
-
-### Vercel deployment issues
-
-1. Make sure all environment variables are set in Vercel dashboard
-2. Set up the webhook after deployment
-3. Check Vercel function logs for errors
-
-## Development
-
-### Running Tests
-
-```bash
-# Add test scripts to package.json
-npm test
-```
-
-### Code Structure
-
-- **[`src/server.js`](src/server.js)**: Express server with web UI and API endpoints
-- **[`src/bot.js`](src/bot.js)**: Telegram bot initialization and message handling
-- **[`src/llm.js`](src/llm.js)**: LLM service for message stylization and icebreaker generation
-- **[`src/icebreaker.js`](src/icebreaker.js)**: Icebreaker timing and generation logic
-- **[`src/storage.js`](src/storage.js)**: File-based persistence layer
 
 
