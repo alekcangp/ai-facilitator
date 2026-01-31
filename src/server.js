@@ -13,7 +13,7 @@ import { t } from './translations.js';
 import dotenv from 'dotenv';
 
 // Dynamic import for storage module based on environment
-let initializeStorage, readConfig, writeConfig, resetConfig, getRecentMessages;
+let initializeStorage, readConfig, writeConfig, resetConfig, clearMessages, getRecentMessages;
 let getKVConnectionStatus = null;
 
 async function loadStorageModule() {
@@ -25,6 +25,7 @@ async function loadStorageModule() {
   readConfig = storageModule.readConfig;
   writeConfig = storageModule.writeConfig;
   resetConfig = storageModule.resetConfig;
+  clearMessages = storageModule.clearMessages;
   getRecentMessages = storageModule.getRecentMessages;
   
   if (storageModule.getKVConnectionStatus) {
@@ -694,6 +695,7 @@ app.post('/api/config', async (req, res) => {
 app.post('/api/config/reset', async (req, res) => {
   try {
     await resetConfig();
+    await clearMessages();
     res.json({ success: true });
   } catch (error) {
     console.error('Error resetting config:', error);
