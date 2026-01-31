@@ -110,9 +110,10 @@ IMPORTANT RULES:
 - Do not add emojis unless the style naturally includes them
 - Keep the same core meaning and intent
 - Make it sound natural and human
-- Maintain approximately the same length as the original message (within 100% difference)
+- Maintain approximately the same length as the original message (within 50% difference)
 - Do not expand or condense the message significantly - keep it concise and similar in scope
-- ${languageInstruction}
+- PRESERVE the original perspective (first person, second person, or third person) - do not change it
+ - ${languageInstruction}
 
 Original message: ${originalMessage}
 
@@ -184,6 +185,7 @@ IMPORTANT RULES:
 - Write in a ${styleDescription} style
 - Keep it brief and concise (1-2 sentences, maximum 20 words)
 - Make it feel human and genuine
+- Write from FIRST PERSON perspective (use "I", "me", "my", "we", "us", "our") since this is a message from the sender
 - ${languageInstruction}
 
 Icebreaker message:`;

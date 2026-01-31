@@ -141,7 +141,7 @@ export async function sendToUser(role, text) {
 
 /**
  * Handle incoming message from Telegram
- * 
+ *
  * @param {Object} msg - Telegram message object
  */
 export async function handleMessage(msg) {
@@ -150,25 +150,84 @@ export async function handleMessage(msg) {
     if (!readConfig) {
       await loadStorageModule();
     }
-    
+
     const config = await readConfig();
-    
+
     // Get language from config (default to 'en')
     const lang = config.language || 'en';
-    
+
     // Get sender info
     const telegramId = msg.from.id;
     const username = msg.from.username || msg.from.first_name || 'Unknown';
     const messageText = msg.text;
-    
+
+    // Handle /start command explicitly
+    if (messageText === '/start') {
+      // Identify sender
+      const senderRole = identifySender(telegramId, config);
+
+      // If already registered, update their languageCode only if language is 'auto'
+      if (senderRole) {
+        // Update languageCode only if language setting is 'auto'
+        if (senderRole === 'A' && config.userA.language === 'auto') {
+          config.userA.languageCode = msg.from.language_code || 'en';
+          await writeConfig(config);
+        } else if (senderRole === 'B' && config.userB.language === 'auto') {
+          config.userB.languageCode = msg.from.language_code || 'en';
+          await writeConfig(config);
+        }
+
+        await bot.sendMessage(
+          telegramId,
+          senderRole === 'A' ? t(lang, 'welcomeUserA') : t(lang, 'welcomeUserB')
+        );
+        return;
+      }
+
+      // If userA is not set, register as userA
+      if (!config.userA.telegramId) {
+        config.userA.telegramId = telegramId;
+        config.userA.username = username;
+        config.userA.languageCode = msg.from.language_code || 'en';
+        await writeConfig(config);
+
+        await bot.sendMessage(
+          telegramId,
+          t(lang, 'welcomeUserA')
+        );
+        return;
+      }
+
+      // If userB is not set, register as userB
+      if (!config.userB.telegramId) {
+        config.userB.telegramId = telegramId;
+        config.userB.username = username;
+        config.userB.languageCode = msg.from.language_code || 'en';
+        await writeConfig(config);
+
+        await bot.sendMessage(
+          telegramId,
+          t(lang, 'welcomeUserB')
+        );
+        return;
+      }
+
+      // Both users are already registered
+      await bot.sendMessage(
+        telegramId,
+        lang === 'ru' ? 'Вы уже зарегистрированы!' : 'You are already registered!'
+      );
+      return;
+    }
+
     // Ignore non-text messages
     if (!messageText) {
       return;
     }
-    
+
     // Identify sender
     const senderRole = identifySender(telegramId, config);
-    
+
     // If sender is not recognized, check if we need to register them
     if (!senderRole) {
       // If userA is not set, register as userA
@@ -177,30 +236,40 @@ export async function handleMessage(msg) {
         config.userA.username = username;
         config.userA.languageCode = msg.from.language_code || 'en';
         await writeConfig(config);
-        
+
         await bot.sendMessage(
           telegramId,
           t(lang, 'welcomeUserA')
         );
         return;
       }
-      
+
       // If userB is not set, register as userB
       if (!config.userB.telegramId) {
         config.userB.telegramId = telegramId;
         config.userB.username = username;
         config.userB.languageCode = msg.from.language_code || 'en';
         await writeConfig(config);
-        
+
         await bot.sendMessage(
           telegramId,
           t(lang, 'welcomeUserB')
         );
         return;
       }
-      
+
       // Both users are already registered, ignore this message
       return;
+    }
+
+    // Update sender's languageCode only if their language setting is 'auto'
+    // Don't override if they've explicitly set a language via UI
+    if (senderRole === 'A' && config.userA.language === 'auto') {
+      config.userA.languageCode = msg.from.language_code || 'en';
+      await writeConfig(config);
+    } else if (senderRole === 'B' && config.userB.language === 'auto') {
+      config.userB.languageCode = msg.from.language_code || 'en';
+      await writeConfig(config);
     }
     
     // Get recipient ID
@@ -216,14 +285,16 @@ export async function handleMessage(msg) {
     
     // Get recipient's role and language
     const recipientRole = senderRole === 'A' ? 'B' : 'A';
-    let recipientLanguage = recipientRole === 'A' 
-      ? (config.userA.language || 'auto') 
+    let recipientLanguage = recipientRole === 'A'
+      ? (config.userA.language || 'auto')
       : (config.userB.language || 'auto');
-    
-    // If language is 'auto', use the sender's Telegram language_code
+
+    // If language is 'auto', use the recipient's Telegram language_code
     if (recipientLanguage === 'auto') {
-      recipientLanguage = msg.from.language_code || 'en';
-      console.log(`Using sender's language_code for User ${recipientRole}: ${recipientLanguage}`);
+      recipientLanguage = recipientRole === 'A'
+        ? (config.userA.languageCode || 'en')
+        : (config.userB.languageCode || 'en');
+      console.log(`Using recipient's language_code for User ${recipientRole}: ${recipientLanguage}`);
     }
     
     // Stylize the message in recipient's language
