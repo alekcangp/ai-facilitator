@@ -83,8 +83,8 @@ export const translations = {
     english: 'English',
     russian: 'Russian',
     auto: 'Auto (from sender)',
-    autoDetect: 'Use sender\'s Telegram language',
-    autoDetectHelp: 'The bot will use the sender\'s Telegram language setting'
+    autoDetect: 'Use sender Telegram language',
+    autoDetectHelp: 'The bot will use the sender Telegram language setting'
   },
   
   ru: {

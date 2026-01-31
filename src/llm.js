@@ -25,75 +25,53 @@ const STYLE_PRESETS = {
   poetic: 'expressive, metaphorical, and artistic'
 };
 
-/**
- * Detect the language of a message
- * Simple detection based on character sets
- * 
- * @param {string} text - The text to analyze
- * @returns {string} - Detected language ('en', 'ru', or 'en' as default)
- */
-function detectLanguage(text) {
-  // Check for Cyrillic characters (Russian)
-  const cyrillicPattern = /[\u0400-\u04FF]/;
-  if (cyrillicPattern.test(text)) {
-    return 'ru';
-  }
-  // Default to English
-  return 'en';
-}
+// Language names mapping for better instructions
+const LANGUAGE_NAMES = {
+  en: 'English',
+  ru: 'Russian',
+  es: 'Spanish',
+  fr: 'French',
+  de: 'German',
+  it: 'Italian',
+  pt: 'Portuguese',
+  zh: 'Chinese',
+  ja: 'Japanese',
+  ko: 'Korean',
+  ar: 'Arabic',
+  nl: 'Dutch',
+  pl: 'Polish',
+  tr: 'Turkish',
+  uk: 'Ukrainian',
+  cs: 'Czech',
+  sv: 'Swedish',
+  da: 'Danish',
+  no: 'Norwegian',
+  fi: 'Finnish'
+};
 
-/**
- * Detect the language of a message using LLM
- * More sophisticated detection using AI
- * 
- * @param {string} text - The text to analyze
- * @returns {Promise<string>} - Detected language code ('en', 'ru', 'es', 'fr', 'de', etc.)
- */
-export async function detectLanguageWithLLM(text) {
-  try {
-    // First, try simple detection for common languages (faster)
-    const simpleDetection = detectLanguage(text);
-    
-    // If text is very short, use simple detection
-    if (text.length < 20) {
-      return simpleDetection;
-    }
-    
-    // Use LLM for more accurate detection
-    const prompt = `Analyze the following text and identify its primary language. 
-Return ONLY the ISO 639-1 language code (2-letter code) in lowercase.
-Common codes: en (English), ru (Russian), es (Spanish), fr (French), de (German), it (Italian), pt (Portuguese), zh (Chinese), ja (Japanese), ko (Korean), ar (Arabic).
-
-Text: ${text}
-
-Language code:`;
-
-    const response = await ai.models.generateContent({
-      model: 'gemma-3-27b-it',
-      contents: prompt
-    });
-    
-    let detectedLang = response.text.trim().toLowerCase();
-    
-    // Clean up the response (remove any extra text)
-    detectedLang = detectedLang.replace(/[^a-z]/g, '').substring(0, 2);
-    
-    // Validate the detected language code
-    const validCodes = ['en', 'ru', 'es', 'fr', 'de', 'it', 'pt', 'zh', 'ja', 'ko', 'ar', 'nl', 'pl', 'tr', 'uk', 'cs', 'sv', 'da', 'no', 'fi'];
-    
-    if (validCodes.includes(detectedLang)) {
-      return detectedLang;
-    }
-    
-    // Fallback to simple detection
-    return simpleDetection;
-    
-  } catch (error) {
-    console.error('Error detecting language with LLM:', error);
-    // Fallback to simple detection
-    return detectLanguage(text);
-  }
-}
+// Fallback icebreaker messages by language
+const FALLBACK_ICEBREAKERS = {
+  en: 'Hey! How have you been?',
+  ru: 'Привет! Как дела?',
+  es: '¡Hola! ¿Cómo estás?',
+  fr: 'Salut! Comment vas-tu?',
+  de: 'Hallo! Wie geht es dir?',
+  it: 'Ciao! Come stai?',
+  pt: 'Olá! Como você está?',
+  zh: '你好！最近怎么样？',
+  ja: 'こんにちは！元気ですか？',
+  ko: '안녕! 어떻게 지내?',
+  ar: 'مرحبا! كيف حالك؟',
+  nl: 'Hoi! Hoe gaat het?',
+  pl: 'Cześć! Jak się masz?',
+  tr: 'Merhaba! Nasılsın?',
+  uk: 'Привіт! Як справи?',
+  cs: 'Ahoj! Jak se máš?',
+  sv: 'Hej! Hur är det?',
+  da: 'Hej! Hvordan har du det?',
+  no: 'Hei! Hvordan går det?',
+  fi: 'Hei! Mitä kuuluu?'
+};
 
 /**
  * Get the style description for a given style
@@ -118,34 +96,10 @@ export async function stylizeMessage(originalMessage, style, customStyle = '', t
   try {
     const styleDescription = getStyleDescription(style, customStyle);
     
-    // Language names mapping for better instructions
-    const languageNames = {
-      en: 'English',
-      ru: 'Russian',
-      es: 'Spanish',
-      fr: 'French',
-      de: 'German',
-      it: 'Italian',
-      pt: 'Portuguese',
-      zh: 'Chinese',
-      ja: 'Japanese',
-      ko: 'Korean',
-      ar: 'Arabic',
-      nl: 'Dutch',
-      pl: 'Polish',
-      tr: 'Turkish',
-      uk: 'Ukrainian',
-      cs: 'Czech',
-      sv: 'Swedish',
-      da: 'Danish',
-      no: 'Norwegian',
-      fi: 'Finnish'
-    };
-    
-    const languageName = languageNames[targetLanguage] || targetLanguage;
+    const languageName = LANGUAGE_NAMES[targetLanguage] || targetLanguage;
     
     // Language-specific instructions
-    const languageInstruction = `Write the response in ${languageName} language.`;
+    const languageInstruction = `Write the response EXCLUSIVELY in ${languageName} language.`;
     
     // Create a prompt that ensures only the rewritten message is returned
     const prompt = `You are a message rewriter. Your task is to rewrite the given message in a ${styleDescription} style.
@@ -156,6 +110,8 @@ IMPORTANT RULES:
 - Do not add emojis unless the style naturally includes them
 - Keep the same core meaning and intent
 - Make it sound natural and human
+- Maintain approximately the same length as the original message (within 100% difference)
+- Do not expand or condense the message significantly - keep it concise and similar in scope
 - ${languageInstruction}
 
 Original message: ${originalMessage}
@@ -192,17 +148,17 @@ Rewritten message:`;
  * @param {Array} recentMessages - Array of recent stylized messages
  * @param {string} style - The style preset to use
  * @param {string} customStyle - Custom style description (if style is 'custom')
- * @param {string} language - Language to use ('en' or 'ru')
+ * @param {string} language - Language to use (e.g., 'en', 'ru', 'es', 'fr', etc.)
  * @returns {Promise<string>} - The icebreaker message
  */
 export async function generateIcebreaker(recentMessages, style, customStyle = '', language = 'en') {
   try {
     const styleDescription = getStyleDescription(style, customStyle);
     
+    const languageName = LANGUAGE_NAMES[language] || language;
+    
     // Language-specific instructions
-    const languageInstruction = language === 'ru' 
-      ? 'Write the response in Russian language.' 
-      : 'Write the response in English language.';
+    const languageInstruction = `Write the response EXCLUSIVELY in ${languageName} language.`;
     
     // Build context from recent messages
     let context = '';
@@ -226,7 +182,7 @@ IMPORTANT RULES:
 - Do NOT mention inactivity, time passed, or "it's been a while"
 - Make it sound completely natural as if continuing a conversation
 - Write in a ${styleDescription} style
-- Keep it brief (1-2 sentences)
+- Keep it brief and concise (1-2 sentences, maximum 20 words)
 - Make it feel human and genuine
 - ${languageInstruction}
 
@@ -244,7 +200,7 @@ Icebreaker message:`;
     
     // Fallback if result is empty
     if (!icebreaker || icebreaker.length < 5) {
-      icebreaker = language === 'ru' ? 'Привет! Как дела?' : 'Hey! How have you been?';
+      icebreaker = FALLBACK_ICEBREAKERS[language] || FALLBACK_ICEBREAKERS.en;
     }
     
     return icebreaker;
@@ -252,7 +208,7 @@ Icebreaker message:`;
   } catch (error) {
     console.error('Error generating icebreaker:', error);
     // Fallback icebreaker
-    return 'Hey! How have you been?';
+    return FALLBACK_ICEBREAKERS[language] || FALLBACK_ICEBREAKERS.en;
   }
 }
 
