@@ -6,12 +6,31 @@
  */
 
 import express from 'express';
-import { initializeStorage, readConfig, writeConfig, resetConfig, getRecentMessages } from './storage.js';
 import { initializeBot, setupBotHandlers, startBot, getBotInfo } from './bot.js';
-import { getAvailableStyles, getStylePresetDescription } from './llm.js';
+import { getAvailableStyles } from './llm.js';
 import { getNextIcebreakerDue } from './icebreaker.js';
-import { t, translations } from './translations.js';
+import { t } from './translations.js';
 import dotenv from 'dotenv';
+
+// Dynamic import for storage module based on environment
+let initializeStorage, readConfig, writeConfig, resetConfig, getRecentMessages;
+let getKVConnectionStatus = null;
+
+async function loadStorageModule() {
+  // Use JSON storage for local development, Redis for Vercel
+  const isVercel = process.env.VERCEL === '1';
+  const storageModule = await import(isVercel ? './storage-kv.js' : './storage.js');
+  
+  initializeStorage = storageModule.initializeStorage;
+  readConfig = storageModule.readConfig;
+  writeConfig = storageModule.writeConfig;
+  resetConfig = storageModule.resetConfig;
+  getRecentMessages = storageModule.getRecentMessages;
+  
+  if (storageModule.getKVConnectionStatus) {
+    getKVConnectionStatus = storageModule.getKVConnectionStatus;
+  }
+}
 
 // Load environment variables
 dotenv.config();
@@ -35,6 +54,8 @@ async function initialize() {
   
   isInitialized = true;
   try {
+    // Load the appropriate storage module first
+    await loadStorageModule();
     await initializeStorage();
     
     const botToken = process.env.BOT_TOKEN;
@@ -92,6 +113,24 @@ app.get('/', async (req, res) => {
         nextIcebreakerText = `~${diffDays} ${t(lang, 'days')}`;
       }
     }
+    
+    // Pre-generate style options HTML to avoid nested template literals
+    const styleOptionsHtml = getAvailableStyles().map(style => {
+      const styleKey = 'style' + style.charAt(0).toUpperCase() + style.slice(1);
+      const styleDescKey = styleKey + 'Desc';
+      return '<option value="' + style + '"' + (config.style === style ? ' selected' : '') + '>' +
+             t(lang, styleKey) + ' - ' + t(lang, styleDescKey) +
+             '</option>';
+    }).join('');
+    
+    // Pre-generate recent messages HTML to avoid nested template literals
+    const recentMessagesHtml = recentMessages.length > 0 ? recentMessages.map(msg => {
+      return '<div class="message-item">' +
+             '<div class="sender">' + t(lang, 'user') + ' ' + msg.senderRole + '</div>' +
+             '<div class="text">' + msg.stylizedText + '</div>' +
+             '<div class="time">' + new Date(msg.timestamp).toLocaleString() + '</div>' +
+             '</div>';
+    }).join('') : '<p style="color: #999; font-style: italic;">' + t(lang, 'noMessages') + '</p>';
     
     const html = `<!DOCTYPE html>
 <html lang="${lang}">
@@ -367,23 +406,25 @@ app.get('/', async (req, res) => {
     <div class="content">
       <div id="successMessage">${t(lang, 'settingsSaved')}</div>
       
-      <div class="section">
-        <h2 class="section-title">${t(lang, 'connectedUsers')}</h2>
-        <div class="status-grid">
-          <div class="status-card ${config.userA.username ? '' : 'not-set'}">
-            <h3>${t(lang, 'userA')}</h3>
-            <p>${config.userA.username || t(lang, 'notRegistered')}</p>
-          </div>
-          <div class="status-card ${config.userB.username ? '' : 'not-set'}">
-            <h3>${t(lang, 'userB')}</h3>
-            <p>${config.userB.username || t(lang, 'notRegistered')}</p>
-          </div>
-          <div class="status-card">
-            <h3>${t(lang, 'nextIcebreaker')}</h3>
-            <p>${nextIcebreakerText}</p>
+        <div class="section">
+          <h2 class="section-title">${t(lang, 'connectedUsers')}</h2>
+          <div class="status-grid">
+            <div class="status-card ${config.userA.username ? '' : 'not-set'}">
+              <h3>${t(lang, 'userA')}</h3>
+              <p>${config.userA.username || t(lang, 'notRegistered')}</p>
+              ${config.userA.languageCode ? `<p style="font-size: 12px; color: #666; margin-top: 5px;">${t(lang, 'languageLabel')} ${config.userA.languageCode.toUpperCase()}</p>` : ''}
+            </div>
+            <div class="status-card ${config.userB.username ? '' : 'not-set'}">
+              <h3>${t(lang, 'userB')}</h3>
+              <p>${config.userB.username || t(lang, 'notRegistered')}</p>
+              ${config.userB.languageCode ? `<p style="font-size: 12px; color: #666; margin-top: 5px;">${t(lang, 'languageLabel')} ${config.userB.languageCode.toUpperCase()}</p>` : ''}
+            </div>
+            <div class="status-card">
+              <h3>${t(lang, 'nextIcebreaker')}</h3>
+              <p>${nextIcebreakerText}</p>
+            </div>
           </div>
         </div>
-      </div>
       
       <div class="section">
         <h2 class="section-title">${t(lang, 'settings')}</h2>
@@ -391,11 +432,7 @@ app.get('/', async (req, res) => {
           <div class="form-group">
             <label for="style">${t(lang, 'messageStyle')}</label>
             <select id="style" name="style" required>
-              ${getAvailableStyles().map(style => `
-                <option value="${style}" ${config.style === style ? 'selected' : ''}>
-                  ${t(lang, 'style' + style.charAt(0).toUpperCase() + style.slice(1))} - ${t(lang, 'style' + style.charAt(0).toUpperCase() + style.slice(1) + 'Desc')}
-                </option>
-              `).join('')}
+              ${styleOptionsHtml}
               <option value="custom" ${config.style === 'custom' ? 'selected' : ''}>${t(lang, 'custom')}</option>
             </select>
           </div>
@@ -468,13 +505,7 @@ app.get('/', async (req, res) => {
         <h2 class="section-title">${t(lang, 'recentMessages')}</h2>
         <div class="message-preview">
           <h4>${t(lang, 'lastMessages')}</h4>
-          ${recentMessages.length > 0 ? recentMessages.map(msg => `
-            <div class="message-item">
-              <div class="sender">${t(lang, 'user')} ${msg.senderRole}</div>
-              <div class="text">${msg.stylizedText}</div>
-              <div class="time">${new Date(msg.timestamp).toLocaleString()}</div>
-            </div>
-          `).join('') : `<p style="color: #999; font-style: italic;">${t(lang, 'noMessages')}</p>`}
+          ${recentMessagesHtml}
         </div>
       </div>
       
@@ -497,9 +528,9 @@ app.get('/', async (req, res) => {
   <script>
     // Store translations for client-side use
     const translations = {
-      autoDetectHelp: '${t(lang, 'autoDetectHelp')}',
-      customLanguageHelp: '${lang === 'ru' ? 'Укажите название языка (например: Японский, Китайский, Итальянский)' : 'Specify the language name (e.g., Japanese, Chinese, Italian)'}',
-      languageHelp: '${lang === 'ru' ? 'Язык для сообщений, отправляемых Пользователю ' : 'Language for messages sent to User '}'
+      autoDetectHelp: 'The bot will use the sender\\'s Telegram language setting',
+      customLanguageHelp: 'Specify the language name (e.g., Japanese, Chinese, Italian)',
+      languageHelp: 'Language for messages sent to User '
     };
     
     // Show/hide custom style input based on selection
@@ -536,7 +567,7 @@ app.get('/', async (req, res) => {
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ language: lang })
         });
-        
+
         if (response.ok) {
           location.reload();
         } else {
@@ -550,7 +581,7 @@ app.get('/', async (req, res) => {
     // Handle settings form submission
     document.getElementById('settingsForm').addEventListener('submit', async function(e) {
       e.preventDefault();
-      
+
       const formData = new FormData(this);
       const data = {
         style: formData.get('style'),
@@ -561,47 +592,47 @@ app.get('/', async (req, res) => {
         userBCustomLanguage: formData.get('userBCustomLanguage') || '',
         icebreakerPeriodDays: parseInt(formData.get('icebreakerPeriod'))
       };
-      
+
       try {
         const response = await fetch('/api/config', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify(data)
         });
-        
+
         if (response.ok) {
           document.getElementById('successMessage').style.display = 'block';
           setTimeout(() => {
             document.getElementById('successMessage').style.display = 'none';
           }, 3000);
         } else {
-          alert('${t(lang, 'saveFailed')}');
+          alert('Failed to save settings');
         }
       } catch (error) {
-        alert('${t(lang, 'saveError')}' + error.message);
+        alert('Error saving settings: ' + error.message);
       }
     });
     
     // Handle reset
     document.getElementById('resetForm').addEventListener('submit', async function(e) {
       e.preventDefault();
-      
-      if (!confirm('${t(lang, 'resetConfirm')}')) {
+
+      if (!confirm('Are you sure you want to reset all configuration and delete message history?')) {
         return;
       }
-      
+
       try {
         const response = await fetch('/api/config/reset', {
           method: 'POST'
         });
-        
+
         if (response.ok) {
           location.reload();
         } else {
-          alert('${t(lang, 'resetFailed')}');
+          alert('Failed to reset configuration');
         }
       } catch (error) {
-        alert('${t(lang, 'resetError')}' + error.message);
+        alert('Error resetting configuration: ' + error.message);
       }
     });
   </script>
@@ -631,9 +662,9 @@ app.get('/api/config', async (req, res) => {
 app.post('/api/config', async (req, res) => {
   try {
     const { style, customStyle, userALanguage, userACustomLanguage, userBLanguage, userBCustomLanguage, icebreakerPeriodDays, language } = req.body;
-    
+
     const config = await readConfig();
-    
+
     if (style) config.style = style;
     if (customStyle !== undefined) config.customStyle = customStyle;
     if (userALanguage) {
@@ -650,9 +681,8 @@ app.post('/api/config', async (req, res) => {
     if (language && (language === 'en' || language === 'ru')) {
       config.language = language;
     }
-    
+
     await writeConfig(config);
-    
     res.json({ success: true, config });
   } catch (error) {
     console.error('Error updating config:', error);
@@ -674,8 +704,39 @@ app.post('/api/config/reset', async (req, res) => {
 // Webhook endpoint for Telegram (Vercel-compatible)
 app.post('/api/webhook', async (req, res) => {
   try {
-    const { handleMessage } = await import('./bot.js');
-    await handleMessage(req.body);
+    const botModule = await import('./bot.js');
+    
+    // Extract the message from the Telegram update object
+    // Telegram webhooks send updates with different types: message, edited_message, channel_post, etc.
+    let message = null;
+    
+    if (req.body.message) {
+      // Regular message
+      message = req.body.message;
+    } else if (req.body.edited_message) {
+      // Edited message
+      message = req.body.edited_message;
+    } else if (req.body.channel_post) {
+      // Channel post (may not have 'from' field)
+      message = req.body.channel_post;
+    } else if (req.body.edited_channel_post) {
+      // Edited channel post (may not have 'from' field)
+      message = req.body.edited_channel_post;
+    } else {
+      // Unsupported update type (callback_query, inline_query, etc.)
+      // Still return 200 to avoid Telegram retries
+      res.status(200).send('OK');
+      return;
+    }
+    
+    // Only process messages that have a 'from' field (required for user identification)
+    if (!message.from) {
+      res.status(200).send('OK');
+      return;
+    }
+    
+    // Pass the extracted message to handleMessage
+    await botModule.handleMessage(message);
     res.status(200).send('OK');
   } catch (error) {
     console.error('Webhook error:', error);
@@ -688,11 +749,46 @@ app.get('/health', (req, res) => {
   res.json({ status: 'ok', timestamp: Date.now() });
 });
 
-// Start server
-app.listen(PORT, () => {
-  console.log(`Server running on port ${PORT}`);
-  console.log(`Web UI: http://localhost:${PORT}`);
-  initialize();
+// Redis health check endpoint
+app.get('/health/kv', async (req, res) => {
+  try {
+    if (!getKVConnectionStatus) {
+      return res.json({ 
+        status: 'not_applicable', 
+        message: 'Redis health check not available',
+        storage: 'unknown'
+      });
+    }
+
+    const kvStatus = getKVConnectionStatus();
+    res.json({
+      status: kvStatus.connected ? 'ok' : 'error',
+      storage: 'redis',
+      connected: kvStatus.connected,
+      checked: kvStatus.checked,
+      hasEnvVars: kvStatus.hasEnvVars,
+      timestamp: Date.now()
+    });
+  } catch (error) {
+    console.error('Health check error:', error);
+    res.status(500).json({ 
+      status: 'error',
+      message: error.message,
+      storage: 'unknown'
+    });
+  }
 });
 
+// Initialize the application
+initialize();
+
+// Start server for local deployment (not Vercel)
+if (process.env.VERCEL !== '1') {
+  app.listen(PORT, () => {
+    console.log(`Server running on port ${PORT}`);
+    console.log(`Web UI: http://localhost:${PORT}`);
+  });
+}
+
+// Export for Vercel
 export default app;

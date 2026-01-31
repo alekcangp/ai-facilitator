@@ -6,15 +6,23 @@
  */
 
 import TelegramBot from 'node-telegram-bot-api';
-import { stylizeMessage, detectLanguageWithLLM } from './llm.js';
+import { stylizeMessage } from './llm.js';
 import { triggerIcebreakerCheck } from './icebreaker.js';
-import {
-  readConfig,
-  writeConfig,
-  addMessage,
-  readMessages
-} from './storage.js';
 import { t } from './translations.js';
+
+// Dynamic import for storage module based on environment
+let readConfig, writeConfig, addMessage, readMessages;
+
+async function loadStorageModule() {
+  // Use JSON storage for local development, Redis for Vercel
+  const isVercel = process.env.VERCEL === '1';
+  const storageModule = await import(isVercel ? './storage-kv.js' : './storage.js');
+
+  readConfig = storageModule.readConfig;
+  writeConfig = storageModule.writeConfig;
+  addMessage = storageModule.addMessage;
+  readMessages = storageModule.readMessages;
+}
 
 // Bot instance (will be initialized)
 let bot = null;
@@ -101,6 +109,11 @@ function getRecipientId(senderRole, config) {
  */
 export async function sendToUser(role, text) {
   try {
+    // Ensure storage module is loaded
+    if (!readConfig) {
+      await loadStorageModule();
+    }
+    
     const config = await readConfig();
     
     let telegramId;
@@ -133,6 +146,11 @@ export async function sendToUser(role, text) {
  */
 export async function handleMessage(msg) {
   try {
+    // Ensure storage module is loaded
+    if (!readConfig) {
+      await loadStorageModule();
+    }
+    
     const config = await readConfig();
     
     // Get language from config (default to 'en')
@@ -157,6 +175,7 @@ export async function handleMessage(msg) {
       if (!config.userA.telegramId) {
         config.userA.telegramId = telegramId;
         config.userA.username = username;
+        config.userA.languageCode = msg.from.language_code || 'en';
         await writeConfig(config);
         
         await bot.sendMessage(
@@ -170,6 +189,7 @@ export async function handleMessage(msg) {
       if (!config.userB.telegramId) {
         config.userB.telegramId = telegramId;
         config.userB.username = username;
+        config.userB.languageCode = msg.from.language_code || 'en';
         await writeConfig(config);
         
         await bot.sendMessage(
@@ -200,10 +220,10 @@ export async function handleMessage(msg) {
       ? (config.userA.language || 'auto') 
       : (config.userB.language || 'auto');
     
-    // If language is 'auto', detect it using LLM
+    // If language is 'auto', use the sender's Telegram language_code
     if (recipientLanguage === 'auto') {
-      recipientLanguage = await detectLanguageWithLLM(messageText);
-      console.log(`Auto-detected language for User ${recipientRole}: ${recipientLanguage}`);
+      recipientLanguage = msg.from.language_code || 'en';
+      console.log(`Using sender's language_code for User ${recipientRole}: ${recipientLanguage}`);
     }
     
     // Stylize the message in recipient's language

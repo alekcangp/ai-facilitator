@@ -1,10 +1,10 @@
 /**
- * Persistence Layer - File-based JSON storage
+ * Persistence Layer - File-based JSON storage with in-memory fallback
  * 
  * Stores only stylized messages, sender roles, and timestamps.
  * Never stores original messages or raw Telegram payloads.
  * 
- * Compatible with Vercel filesystem constraints.
+ * Uses in-memory storage on Vercel (read-only filesystem).
  */
 
 import fs from 'fs/promises';
@@ -14,8 +14,16 @@ const DATA_DIR = path.join(process.cwd(), 'data');
 const CONFIG_FILE = path.join(DATA_DIR, 'config.json');
 const MESSAGES_FILE = path.join(DATA_DIR, 'messages.json');
 
+// Detect if running on Vercel
+const isVercel = process.env.VERCEL === '1';
+
+// In-memory storage for Vercel
+let inMemoryConfig = null;
+let inMemoryMessages = null;
+
 // Default configuration
 const DEFAULT_CONFIG = {
+  language: 'en', // UI language (en or ru)
   userA: {
     telegramId: null,
     username: null,
@@ -44,6 +52,14 @@ const DEFAULT_MESSAGES = {
  * Initialize data directory and files
  */
 export async function initializeStorage() {
+  if (isVercel) {
+    // Use in-memory storage on Vercel
+    inMemoryConfig = { ...DEFAULT_CONFIG };
+    inMemoryMessages = { ...DEFAULT_MESSAGES };
+    console.log('Using in-memory storage (Vercel environment)');
+    return;
+  }
+
   try {
     await fs.mkdir(DATA_DIR, { recursive: true });
     
@@ -71,6 +87,10 @@ export async function initializeStorage() {
  * Read configuration
  */
 export async function readConfig() {
+  if (isVercel) {
+    return inMemoryConfig || { ...DEFAULT_CONFIG };
+  }
+
   try {
     const data = await fs.readFile(CONFIG_FILE, 'utf-8');
     return JSON.parse(data);
@@ -84,6 +104,11 @@ export async function readConfig() {
  * Write configuration
  */
 export async function writeConfig(config) {
+  if (isVercel) {
+    inMemoryConfig = config;
+    return;
+  }
+
   try {
     await fs.writeFile(CONFIG_FILE, JSON.stringify(config, null, 2));
   } catch (error) {
@@ -96,6 +121,10 @@ export async function writeConfig(config) {
  * Read messages
  */
 export async function readMessages() {
+  if (isVercel) {
+    return inMemoryMessages || { ...DEFAULT_MESSAGES };
+  }
+
   try {
     const data = await fs.readFile(MESSAGES_FILE, 'utf-8');
     return JSON.parse(data);
@@ -109,6 +138,11 @@ export async function readMessages() {
  * Write messages
  */
 export async function writeMessages(messagesData) {
+  if (isVercel) {
+    inMemoryMessages = messagesData;
+    return;
+  }
+
   try {
     await fs.writeFile(MESSAGES_FILE, JSON.stringify(messagesData, null, 2));
   } catch (error) {

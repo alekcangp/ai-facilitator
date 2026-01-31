@@ -6,13 +6,21 @@
  */
 
 import { generateIcebreaker } from './llm.js';
-import {
-  readConfig,
-  getRecentMessages,
-  getLastMessageTimestamp,
-  getLastSenderRole,
-  updateLastIcebreakerCheck
-} from './storage.js';
+
+// Dynamic import for storage module based on environment
+let readConfig, getRecentMessages, getLastMessageTimestamp, getLastSenderRole, updateLastIcebreakerCheck;
+
+async function loadStorageModule() {
+  // Use JSON storage for local development, Redis for Vercel
+  const isVercel = process.env.VERCEL === '1';
+  const storageModule = await import(isVercel ? './storage-kv.js' : './storage.js');
+
+  readConfig = storageModule.readConfig;
+  getRecentMessages = storageModule.getRecentMessages;
+  getLastMessageTimestamp = storageModule.getLastMessageTimestamp;
+  getLastSenderRole = storageModule.getLastSenderRole;
+  updateLastIcebreakerCheck = storageModule.updateLastIcebreakerCheck;
+}
 
 /**
  * Calculate random icebreaker interval in milliseconds
@@ -37,6 +45,11 @@ function calculateIcebreakerInterval(periodDays) {
  */
 export async function checkIcebreakerDue() {
   try {
+    // Ensure storage module is loaded
+    if (!readConfig) {
+      await loadStorageModule();
+    }
+    
     const config = await readConfig();
     const lastMessageTimestamp = await getLastMessageTimestamp();
     
@@ -123,6 +136,11 @@ export async function triggerIcebreakerCheck(sendToUser) {
  */
 export async function getNextIcebreakerDue() {
   try {
+    // Ensure storage module is loaded
+    if (!readConfig) {
+      await loadStorageModule();
+    }
+    
     const config = await readConfig();
     const lastMessageTimestamp = await getLastMessageTimestamp();
     

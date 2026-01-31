@@ -13,6 +13,7 @@ export const translations = {
     connectedUsers: '👥 Connected Users',
     userA: 'User A',
     userB: 'User B',
+    user: 'User',
     userALanguage: 'User A Language',
     userBLanguage: 'User B Language',
     nextIcebreaker: 'Next Icebreaker',
@@ -20,6 +21,7 @@ export const translations = {
     noMessagesYet: 'No messages yet',
     dueNow: 'Due now',
     days: 'days',
+    languageLabel: 'Language:',
     
     // UI - Settings
     settings: '⚙️ Settings',
@@ -80,9 +82,9 @@ export const translations = {
     // Language names
     english: 'English',
     russian: 'Russian',
-    auto: 'Auto (detect)',
-    autoDetect: 'Auto-detect language using AI',
-    autoDetectHelp: 'The bot will automatically detect the language of incoming messages'
+    auto: 'Auto (from sender)',
+    autoDetect: 'Use sender\'s Telegram language',
+    autoDetectHelp: 'The bot will use the sender\'s Telegram language setting'
   },
   
   ru: {
@@ -94,6 +96,7 @@ export const translations = {
     connectedUsers: '👥 Подключенные пользователи',
     userA: 'Пользователь A',
     userB: 'Пользователь B',
+    user: 'Пользователь',
     userALanguage: 'Язык пользователя A',
     userBLanguage: 'Язык пользователя B',
     nextIcebreaker: 'Следующий ледокол',
@@ -101,6 +104,7 @@ export const translations = {
     noMessagesYet: 'Сообщений пока нет',
     dueNow: 'Должен быть сейчас',
     days: 'дней',
+    languageLabel: 'Язык:',
     
     // UI - Settings
     settings: '⚙️ Настройки',
@@ -112,7 +116,7 @@ export const translations = {
     icebreakerPeriodHelp: 'Случайный интервал: ±2 дня от этого значения (минимум 3 дня)',
     saveSettings: 'Сохранить настройки',
     language: 'Язык',
-    custom: 'Кастомный',
+    custom: 'Пользовательский',
     
     // Style names
     styleFriendly: 'Дружелюбный',
@@ -161,9 +165,9 @@ export const translations = {
     // Language names
     english: 'English',
     russian: 'Русский',
-    auto: 'Авто (определение)',
-    autoDetect: 'Автоопределение языка с помощью ИИ',
-    autoDetectHelp: 'Бот будет автоматически определять язык входящих сообщений'
+    auto: 'Авто (от отправителя)',
+    autoDetect: 'Использовать язык Telegram отправителя',
+    autoDetectHelp: 'Бот будет использовать настройку языка Telegram отправителя'
   }
 };
 
