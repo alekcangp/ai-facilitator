@@ -7,7 +7,7 @@ export const translations = {
   en: {
     // UI - Header
     title: '🤖 Telegram Facilitator Bot',
-    subtitle: '1-to-1 duplex messaging with AI stylization',
+    subtitle: '1-to-1 duplex messaging with AI stylization and translation',
     
     // UI - Connected Users
     connectedUsers: '👥 Connected Users',
@@ -92,7 +92,7 @@ export const translations = {
   ru: {
     // UI - Header
     title: '🤖 Telegram Фасилитатор Бот',
-    subtitle: 'Дуплексная переписка 1-на-1 с AI стилизацией',
+    subtitle: 'Дуплексная переписка 1-на-1 с AI стилизацией и переводом',
     
     // UI - Connected Users
     connectedUsers: '👥 Подключенные пользователи',
