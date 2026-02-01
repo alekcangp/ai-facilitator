@@ -6,7 +6,7 @@
  */
 
 import TelegramBot from 'node-telegram-bot-api';
-import { stylizeMessage } from './llm.js';
+import { stylizeMessage, translateMessage } from './llm.js';
 import { triggerIcebreakerCheck } from './icebreaker.js';
 import { t } from './translations.js';
 
@@ -274,7 +274,7 @@ export async function handleMessage(msg) {
     
     // Get recipient ID
     const recipientId = getRecipientId(senderRole, config);
-    
+
     if (!recipientId) {
       await bot.sendMessage(
         telegramId,
@@ -282,7 +282,7 @@ export async function handleMessage(msg) {
       );
       return;
     }
-    
+
     // Get recipient's role and language
     const recipientRole = senderRole === 'A' ? 'B' : 'A';
     let recipientLanguage = recipientRole === 'A'
@@ -296,24 +296,59 @@ export async function handleMessage(msg) {
         : (config.userB.languageCode || 'en');
       console.log(`Using recipient's language_code for User ${recipientRole}: ${recipientLanguage}`);
     }
-    
-    // Stylize the message in recipient's language
-    const stylizedText = await stylizeMessage(
-      messageText,
-      config.style,
-      config.customStyle,
-      recipientLanguage
-    );
-    
-    // Store the stylized message (never the original)
-    await addMessage(senderRole, stylizedText);
-    
-    // Forward the stylized message to the recipient
-    await bot.sendMessage(recipientId, stylizedText);
-    
+
+    // Get sender's language
+    let senderLanguage = senderRole === 'A'
+      ? (config.userA.language || 'auto')
+      : (config.userB.language || 'auto');
+
+    // If language is 'auto', use the sender's Telegram language_code
+    if (senderLanguage === 'auto') {
+      senderLanguage = senderRole === 'A'
+        ? (config.userA.languageCode || 'en')
+        : (config.userB.languageCode || 'en');
+      console.log(`Using sender's language_code for User ${senderRole}: ${senderLanguage}`);
+    }
+
+    // Determine if languages are the same
+    const languagesAreSame = senderLanguage === recipientLanguage;
+
+    // Process the message based on stylization setting
+    let processedText;
+    const stylizationEnabled = config.stylizationEnabled !== false; // Default to true
+
+    if (!stylizationEnabled && languagesAreSame) {
+      // Stylization disabled and same language: just forward the original message
+      processedText = messageText;
+      console.log(`Stylization disabled, same language: forwarding original message`);
+    } else if (!stylizationEnabled && !languagesAreSame) {
+      // Stylization disabled but different languages: translate only
+      processedText = await translateMessage(
+        messageText,
+        senderLanguage,
+        recipientLanguage
+      );
+      console.log(`Stylization disabled, different languages: translating from ${senderLanguage} to ${recipientLanguage}`);
+    } else {
+      // Stylization enabled: use full stylization (includes translation if needed)
+      processedText = await stylizeMessage(
+        messageText,
+        config.style,
+        config.customStyle,
+        recipientLanguage
+      );
+      console.log(`Stylization enabled: stylizing in ${recipientLanguage}`);
+    }
+
+    // Store the processed message (never the original)
+    await addMessage(senderRole, processedText);
+
+    // Forward the processed message to the recipient
+    await bot.sendMessage(recipientId, processedText);
+
     console.log(`Message from User ${senderRole} (${username}) -> User ${senderRole === 'A' ? 'B' : 'A'}`);
     console.log(`Original: ${messageText}`);
-    console.log(`Stylized: ${stylizedText}`);
+    console.log(`Processed: ${processedText}`);
     
     // Check if icebreaker is due (lightweight check on each message)
     await triggerIcebreakerCheck(sendToUser);

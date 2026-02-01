@@ -38,6 +38,7 @@ const DEFAULT_CONFIG = {
   },
   style: 'friendly',
   customStyle: '',
+  stylizationEnabled: true, // Enable/disable AI stylization
   icebreakerPeriodDays: 7,
   lastIcebreakerCheck: Date.now()
 };

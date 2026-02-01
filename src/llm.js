@@ -84,8 +84,58 @@ function getStyleDescription(style, customStyle) {
 }
 
 /**
+ * Translate a message from one language to another without stylization
+ *
+ * @param {string} originalMessage - The original message text
+ * @param {string} sourceLanguage - Source language code (e.g., 'en', 'ru', 'es', 'fr', etc.)
+ * @param {string} targetLanguage - Target language code (e.g., 'en', 'ru', 'es', 'fr', etc.)
+ * @returns {Promise<string>} - The translated message text only
+ */
+export async function translateMessage(originalMessage, sourceLanguage, targetLanguage) {
+  try {
+    const sourceLanguageName = LANGUAGE_NAMES[sourceLanguage] || sourceLanguage;
+    const targetLanguageName = LANGUAGE_NAMES[targetLanguage] || targetLanguage;
+
+    // Create a prompt that ensures only the translated message is returned
+    const prompt = `You are a professional translator. Your task is to translate the given message from ${sourceLanguageName} to ${targetLanguageName}.
+
+IMPORTANT RULES:
+- Return ONLY the translated message, nothing else
+- No explanations, no metadata, no quotes around the message
+- Keep the same core meaning and intent
+- Make it sound natural and human
+
+Original message: ${originalMessage}
+
+Translated message:`;
+
+    const response = await ai.models.generateContent({
+      model: 'gemma-3-27b-it',
+      contents: prompt
+    });
+
+    let translatedText = response.text.trim();
+
+    // Remove any quotes if the model added them
+    translatedText = translatedText.replace(/^["']|["']$/g, '');
+
+    // If the result is empty or too short, return original
+    if (!translatedText || translatedText.length < 2) {
+      return originalMessage;
+    }
+
+    return translatedText;
+
+  } catch (error) {
+    console.error('Error translating message:', error);
+    // On error, return original message to ensure delivery
+    return originalMessage;
+  }
+}
+
+/**
  * Stylize a message using Gemma LLM
- * 
+ *
  * @param {string} originalMessage - The original message text
  * @param {string} style - The style preset to use
  * @param {string} customStyle - Custom style description (if style is 'custom')

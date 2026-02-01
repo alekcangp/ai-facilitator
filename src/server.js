@@ -437,11 +437,21 @@ app.get('/', async (req, res) => {
               <option value="custom" ${config.style === 'custom' ? 'selected' : ''}>${t(lang, 'custom')}</option>
             </select>
           </div>
-          
+
+          <div class="form-group">
+            <label style="display: flex; align-items: center; cursor: pointer;">
+              <input type="checkbox" id="stylizationEnabled" name="stylizationEnabled" 
+                     ${config.stylizationEnabled !== false ? 'checked' : ''}
+                     style="width: auto; margin-right: 10px;">
+              <span>${t(lang, 'stylizationEnabled')}</span>
+            </label>
+            <p class="help-text">${t(lang, 'stylizationEnabledHelp')}</p>
+          </div>
+
           <div class="form-group" id="customStyleGroup" style="display: ${config.style === 'custom' ? 'block' : 'none'};">
             <label for="customStyle">${t(lang, 'customStyle')}</label>
-            <input type="text" id="customStyle" name="customStyle" 
-                   value="${config.customStyle}" 
+            <input type="text" id="customStyle" name="customStyle"
+                   value="${config.customStyle}"
                    placeholder="${t(lang, 'customStylePlaceholder')}">
             <p class="help-text">${t(lang, 'customStyleHelp')}</p>
           </div>
@@ -587,6 +597,7 @@ app.get('/', async (req, res) => {
       const data = {
         style: formData.get('style'),
         customStyle: formData.get('customStyle') || '',
+        stylizationEnabled: formData.get('stylizationEnabled') === 'on',
         userALanguage: formData.get('userALanguage'),
         userACustomLanguage: formData.get('userACustomLanguage') || '',
         userBLanguage: formData.get('userBLanguage'),
@@ -662,12 +673,13 @@ app.get('/api/config', async (req, res) => {
 // API: Update configuration
 app.post('/api/config', async (req, res) => {
   try {
-    const { style, customStyle, userALanguage, userACustomLanguage, userBLanguage, userBCustomLanguage, icebreakerPeriodDays, language } = req.body;
+    const { style, customStyle, stylizationEnabled, userALanguage, userACustomLanguage, userBLanguage, userBCustomLanguage, icebreakerPeriodDays, language } = req.body;
 
     const config = await readConfig();
 
     if (style) config.style = style;
     if (customStyle !== undefined) config.customStyle = customStyle;
+    if (stylizationEnabled !== undefined) config.stylizationEnabled = stylizationEnabled;
     if (userALanguage) {
       config.userA.language = userALanguage;
       config.userA.customLanguage = userACustomLanguage || '';

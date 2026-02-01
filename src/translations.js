@@ -26,6 +26,8 @@ export const translations = {
     // UI - Settings
     settings: '⚙️ Settings',
     messageStyle: 'Message Style',
+    stylizationEnabled: 'Enable AI Stylization',
+    stylizationEnabledHelp: 'When disabled, messages are forwarded as-is or translated (if languages differ) without style changes.',
     customStyle: 'Custom Style Description',
     customStylePlaceholder: 'e.g., witty, sarcastic, philosophical',
     customStyleHelp: 'Describe how messages should be rewritten',
@@ -109,6 +111,8 @@ export const translations = {
     // UI - Settings
     settings: '⚙️ Настройки',
     messageStyle: 'Стиль сообщений',
+    stylizationEnabled: 'Включить AI стилизацию',
+    stylizationEnabledHelp: 'Когда отключено, сообщения пересылаются как есть или переводятся (если языки различаются) без изменения стиля.',
     customStyle: 'Описание пользовательского стиля',
     customStylePlaceholder: 'например: остроумный, саркастичный, философский',
     customStyleHelp: 'Опишите, как должны переписываться сообщения',
