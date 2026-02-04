@@ -40,8 +40,6 @@ User A → Telegram → Bot → Gemma Stylization → Telegram → User B
 - [`stylizeMessage()`](src/llm.js:59) - Rewrites message in requested style
 - [`generateIcebreaker()`](src/llm.js:147) - Creates context-aware conversation starters
 
-**Environment**: `GEMINI_API_KEY` required
-
 ---
 
 ## Opik Integration
@@ -134,6 +132,39 @@ Automated icebreaker checking via GitHub Actions (runs every hour)
 
 ---
 
+## Install & Register Users
+
+### 1. Add Bot to Telegram
+
+ Open Telegram and search for your bot username
+
+### 2. Register Users
+
+**User A** (first user):
+- Sends `/start` to the bot
+- Automatically registered as User A
+- Bot welcomes and suggest to share
+
+**User B** (second user):
+- Sends `/start` to the bot
+- Automatically registered as User B
+- Bot confirms registration
+
+### 3. Start Messaging
+
+Once both users are registered:
+- User A sends a message → Bot stylizes → User B receives
+- User B sends a message → Bot stylizes → User A receives
+
+### Reset & Re-register
+
+If you reset the bot in the UI:
+- Both users need to re-register
+- Each user sends any message to the bot
+- User A registers first, User B second
+
+---
+
 ## Local Development
 
 ```bash
@@ -160,4 +191,3 @@ Access web UI to:
 - Configure icebreaker period (3-30 days)
 - View registered users, message history and metrics.
 
----
