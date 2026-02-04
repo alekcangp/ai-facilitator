@@ -1,0 +1,657 @@
+<!DOCTYPE html>
+<html lang="__LANG__">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Telegram Facilitator Bot</title>
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+    
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, sans-serif;
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      min-height: 100vh;
+      padding: 20px;
+      display: flex;
+      justify-content: center;
+      align-items: flex-start;
+    }
+    
+    .container {
+      background: white;
+      border-radius: 16px;
+      box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+      width: 100%;
+      max-width: 800px;
+      margin: 20px 0;
+      overflow: hidden;
+    }
+    
+    .header {
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      color: white;
+      padding: 30px;
+      text-align: center;
+      position: relative;
+    }
+    
+    .header h1 {
+      font-size: 28px;
+      margin-bottom: 10px;
+    }
+    
+    .header p {
+      font-size: 14px;
+      opacity: 0.9;
+    }
+    
+    .language-selector {
+      position: absolute;
+      top: 20px;
+      right: 20px;
+    }
+    
+    .language-selector select {
+      background: rgba(255, 255, 255, 0.2);
+      color: white;
+      border: 1px solid rgba(255, 255, 255, 0.3);
+      padding: 8px 12px;
+      border-radius: 6px;
+      font-size: 14px;
+      cursor: pointer;
+      backdrop-filter: blur(10px);
+    }
+    
+    .language-selector select option {
+      background: white;
+      color: #333;
+    }
+    
+    .content {
+      padding: 30px;
+    }
+    
+    .section {
+      margin-bottom: 30px;
+    }
+    
+    .section-title {
+      font-size: 18px;
+      font-weight: 600;
+      color: #333;
+      margin-bottom: 15px;
+      padding-bottom: 10px;
+      border-bottom: 2px solid #f0f0f0;
+    }
+    
+    .status-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+      gap: 15px;
+      margin-bottom: 20px;
+    }
+    
+    .status-card {
+      background: #f8f9fa;
+      padding: 15px;
+      border-radius: 8px;
+      border-left: 4px solid #667eea;
+    }
+    
+    .status-card h3 {
+      font-size: 12px;
+      color: #666;
+      text-transform: uppercase;
+      margin-bottom: 8px;
+    }
+    
+    .status-card p {
+      font-size: 16px;
+      font-weight: 600;
+      color: #333;
+    }
+    
+    .status-card.not-set {
+      border-left-color: #dc3545;
+    }
+    
+    .status-card.not-set p {
+      color: #dc3545;
+    }
+    
+    .form-group {
+      margin-bottom: 20px;
+    }
+    
+    label {
+      display: block;
+      font-size: 14px;
+      font-weight: 600;
+      color: #333;
+      margin-bottom: 8px;
+    }
+    
+    select, input[type="text"], input[type="number"] {
+      width: 100%;
+      padding: 12px;
+      border: 2px solid #e0e0e0;
+      border-radius: 8px;
+      font-size: 14px;
+      transition: border-color 0.3s;
+    }
+    
+    select:focus, input:focus {
+      outline: none;
+      border-color: #667eea;
+    }
+    
+    .help-text {
+      font-size: 12px;
+      color: #666;
+      margin-top: 5px;
+    }
+    
+    .btn {
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      color: white;
+      border: none;
+      padding: 12px 30px;
+      border-radius: 8px;
+      font-size: 16px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: transform 0.2s, box-shadow 0.2s;
+    }
+    
+    .btn:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 5px 20px rgba(102, 126, 234, 0.4);
+    }
+    
+    .btn:active {
+      transform: translateY(0);
+    }
+    
+    .btn-secondary {
+      background: #6c757d;
+    }
+    
+    .btn-secondary:hover {
+      box-shadow: 0 5px 20px rgba(108, 117, 125, 0.4);
+    }
+    
+    .message-preview {
+      background: #f8f9fa;
+      padding: 15px;
+      border-radius: 8px;
+      margin-top: 10px;
+    }
+    
+    .message-preview h4 {
+      font-size: 14px;
+      color: #666;
+      margin-bottom: 10px;
+    }
+    
+    .message-item {
+      background: white;
+      padding: 10px;
+      border-radius: 6px;
+      margin-bottom: 8px;
+      font-size: 13px;
+    }
+    
+    .message-item .sender {
+      font-weight: 600;
+      color: #999;
+      margin-bottom: 4px;
+    }
+    
+    .message-item .text {
+      color: #333;
+      margin-bottom: 4px;
+    }
+    
+    .message-item .time {
+      font-size: 11px;
+      color: #999;
+    }
+    
+    #statusMessage {
+      background: #d4edda;
+      color: #155724;
+      padding: 12px;
+      border-radius: 8px;
+      margin-bottom: 20px;
+      display: none;
+    }
+    
+    #statusMessage .improvements {
+      margin-top: 10px;
+      padding-top: 10px;
+      border-top: 1px solid #a8d4be;
+    }
+    
+    #statusMessage .improvement-item {
+      background: rgba(255,255,255,0.5);
+      padding: 8px;
+      border-radius: 4px;
+      margin-top: 6px;
+      font-size: 12px;
+    }
+    
+    #statusMessage .improvement-item strong {
+      color: #155724;
+    }
+    
+    .footer {
+      text-align: center;
+      padding: 20px;
+      background: #f8f9fa;
+      color: #666;
+      font-size: 12px;
+    }
+    
+    @media (max-width: 600px) {
+      .content {
+        padding: 20px;
+      }
+      
+      .status-grid {
+        grid-template-columns: 1fr;
+      }
+      
+      .language-selector {
+        position: static;
+        margin-bottom: 15px;
+        text-align: center;
+      }
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <div class="header">
+      <div class="language-selector">
+        <select id="languageSelect" onchange="changeLanguage()">
+          <option value="en" __LANG_EN_SELECTED__>English</option>
+          <option value="ru" __LANG_RU_SELECTED__>Русский</option>
+        </select>
+      </div>
+      <h1>__TITLE__</h1>
+      <p>__SUBTITLE__</p>
+      __BOT_USERNAME__
+    </div>
+    
+    <div class="content">
+      <div id="statusMessage">__SETTINGS_SAVED__</div>
+      
+      <div class="section">
+        <h2 class="section-title">__CONNECTED_USERS__</h2>
+        <div class="status-grid">
+          <div class="status-card __USER_A_CLASS__">
+            <h3>__USER_A__</h3>
+            <p>__USER_A_NAME__</p>
+            __USER_A_LANGUAGE__
+          </div>
+          <div class="status-card __USER_B_CLASS__">
+            <h3>__USER_B__</h3>
+            <p>__USER_B_NAME__</p>
+            __USER_B_LANGUAGE__
+          </div>
+          <div class="status-card">
+            <h3>__NEXT_ICEBREAKER__</h3>
+            <p>__NEXT_ICEBREAKER_TEXT__</p>
+          </div>
+        </div>
+      </div>
+      
+      <div class="section">
+        <h2 class="section-title">__RECENT_MESSAGES__</h2>
+        <div class="message-preview">
+          <h4>__LAST_MESSAGES__</h4>
+          __RECENT_MESSAGES_HTML__
+        </div>
+      </div>
+      
+      <div class="section">
+        <h2 class="section-title">__SETTINGS__</h2>
+        <form id="settingsForm">
+          <div class="form-group">
+            <label for="style">__MESSAGE_STYLE__</label>
+            <select id="style" name="style" required>
+              __STYLE_OPTIONS__
+              <option value="custom" __CUSTOM_STYLE_SELECTED__>__CUSTOM__</option>
+            </select>
+          </div>
+
+          <div class="form-group">
+            <label style="display: flex; align-items: center; cursor: pointer;">
+              <input type="checkbox" id="stylizationEnabled" name="stylizationEnabled" 
+                     __STYLIZATION_CHECKED__
+                     style="width: auto; margin-right: 10px;">
+              <span>__STYLIZATION_ENABLED__</span>
+            </label>
+            <p class="help-text">__STYLIZATION_ENABLED_HELP__</p>
+          </div>
+
+          <div class="form-group" id="customStyleGroup" style="display: __CUSTOM_STYLE_DISPLAY__;">
+            <label for="customStyle">__CUSTOM_STYLE__</label>
+            <input type="text" id="customStyle" name="customStyle"
+                   value="__CUSTOM_STYLE_VALUE__"
+                   placeholder="__CUSTOM_STYLE_PLACEHOLDER__">
+            <p class="help-text">__CUSTOM_STYLE_HELP__</p>
+          </div>
+          
+          <div class="form-group">
+            <label for="userALanguage">__USER_A_LANGUAGE_LABEL__</label>
+            <select id="userALanguage" name="userALanguage" required onchange="toggleCustomLanguage('A')">
+              <option value="auto" __USER_A_LANG_AUTO__>__AUTO__</option>
+              <option value="en" __USER_A_LANG_EN__>__ENGLISH__</option>
+              <option value="ru" __USER_A_LANG_RU__>__RUSSIAN__</option>
+              <option value="es" __USER_A_LANG_ES__>Español</option>
+              <option value="fr" __USER_A_LANG_FR__>Français</option>
+              <option value="de" __USER_A_LANG_DE__>Deutsch</option>
+              <option value="custom" __USER_A_LANG_CUSTOM__>__CUSTOM__</option>
+            </select>
+            <p class="help-text">__USER_A_LANGUAGE_HELP__</p>
+          </div>
+          
+          <div class="form-group" id="userACustomLanguageGroup" style="display: __USER_A_CUSTOM_DISPLAY__;">
+            <label>__USER_A_CUSTOM_LANGUAGE__</label>
+            <input type="text" id="userACustomLanguage" name="userACustomLanguage" 
+                   value="__USER_A_CUSTOM_VALUE__" 
+                   placeholder="__USER_A_CUSTOM_PLACEHOLDER__">
+            <p class="help-text">__USER_A_CUSTOM_HELP__</p>
+          </div>
+          
+          <div class="form-group">
+            <label for="userBLanguage">__USER_B_LANGUAGE_LABEL__</label>
+            <select id="userBLanguage" name="userBLanguage" required onchange="toggleCustomLanguage('B')">
+              <option value="auto" __USER_B_LANG_AUTO__>__AUTO__</option>
+              <option value="en" __USER_B_LANG_EN__>__ENGLISH__</option>
+              <option value="ru" __USER_B_LANG_RU__>__RUSSIAN__</option>
+              <option value="es" __USER_B_LANG_ES__>Español</option>
+              <option value="fr" __USER_B_LANG_FR__>Français</option>
+              <option value="de" __USER_B_LANG_DE__>Deutsch</option>
+              <option value="custom" __USER_B_LANG_CUSTOM__>__CUSTOM__</option>
+            </select>
+            <p class="help-text">__USER_B_LANGUAGE_HELP__</p>
+          </div>
+          
+          <div class="form-group" id="userBCustomLanguageGroup" style="display: __USER_B_CUSTOM_DISPLAY__;">
+            <label>__USER_B_CUSTOM_LANGUAGE__</label>
+            <input type="text" id="userBCustomLanguage" name="userBCustomLanguage" 
+                   value="__USER_B_CUSTOM_VALUE__" 
+                   placeholder="__USER_B_CUSTOM_PLACEHOLDER__">
+            <p class="help-text">__USER_B_CUSTOM_HELP__</p>
+          </div>
+          
+          <div class="form-group">
+            <label for="icebreakerPeriod">__ICEBREAKER_PERIOD__</label>
+            <input type="number" id="icebreakerPeriod" name="icebreakerPeriod" 
+                   value="__ICEBREAKER_PERIOD_VALUE__" 
+                   min="3" max="30" required>
+            <p class="help-text">__ICEBREAKER_PERIOD_HELP__</p>
+          </div>
+          
+          <button type="submit" class="btn">__SAVE_SETTINGS__</button>
+        </form>
+      </div>
+      
+      <div class="section">
+        <h2 class="section-title">__EVALUATION_METRICS__</h2>
+        <div style="overflow-x: auto;">
+          <table id="evaluationsTable" style="width: 100%; border-collapse: collapse; font-size: 12px;">
+            <thead>
+              <tr style="background: #667eea; color: white;">
+                <th style="padding: 10px; text-align: center;">__METRIC_COMPLETENESS__</th>
+                <th style="padding: 10px; text-align: center;">__METRIC_PERSPECTIVE__</th>
+                <th style="padding: 10px; text-align: center;">__METRIC_CLARITY__</th>
+                <th style="padding: 10px; text-align: center;">__METRIC_GRAMMAR__</th>
+                <th style="padding: 10px; text-align: center;">__METRIC_APPROPRIATENESS__</th>
+                <th style="padding: 10px; text-align: center;">__METRIC_NATURALNESS__</th>
+              </tr>
+            </thead>
+            <tbody id="evaluationsBody">
+              <tr><td colspan="6" style="padding: 20px; text-align: center; color: #999;">__LOADING__</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+      
+      <div class="section">
+        <h2 class="section-title">__FEEDBACK__</h2>
+        <div id="feedbackList" style="background: #f8f9fa; padding: 15px; border-radius: 8px; font-size: 13px;">
+          <span style="color: #999;">__LOADING__</span>
+        </div>
+      </div>
+      
+      <div class="section">
+        <h2 class="section-title">__RESET__</h2>
+        <form id="resetForm">
+          <p style="margin-bottom: 15px; color: #666; font-size: 14px;">
+            __RESET_DESCRIPTION__
+          </p>
+          <button type="submit" class="btn btn-secondary">__RESET_CONFIG__</button>
+        </form>
+      </div>
+    </div>
+    
+    <div class="footer">
+      <p>__FOOTER__</p>
+    </div>
+  </div>
+  
+  <script>
+    const translations = {
+      autoDetectHelp: 'The bot will use the sender\'s Telegram language setting',
+      customLanguageHelp: 'Specify the language name (e.g., Japanese, Chinese, Italian)',
+      languageHelp: 'Language for messages sent to User '
+    };
+    
+    document.getElementById('style').addEventListener('change', function() {
+      const customGroup = document.getElementById('customStyleGroup');
+      customGroup.style.display = this.value === 'custom' ? 'block' : 'none';
+    });
+    
+    function toggleCustomLanguage(user) {
+      const select = document.getElementById('user' + user + 'Language');
+      const customGroup = document.getElementById('user' + user + 'CustomLanguageGroup');
+      const helpText = select.parentElement.querySelector('.help-text');
+      
+      customGroup.style.display = select.value === 'custom' ? 'block' : 'none';
+      
+      if (select.value === 'auto') {
+        helpText.textContent = translations.autoDetectHelp;
+      } else if (select.value === 'custom') {
+        helpText.textContent = translations.customLanguageHelp;
+      } else {
+        helpText.textContent = translations.languageHelp + user;
+      }
+    }
+    
+    async function changeLanguage() {
+      const lang = document.getElementById('languageSelect').value;
+      try {
+        const response = await fetch('/api/config', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ language: lang })
+        });
+
+        if (response.ok) {
+          location.reload();
+        } else {
+          alert('Failed to change language');
+        }
+      } catch (error) {
+        alert('Error changing language: ' + error.message);
+      }
+    }
+    
+    document.getElementById('settingsForm').addEventListener('submit', async function(e) {
+      e.preventDefault();
+
+      const formData = new FormData(this);
+      const data = {
+        style: formData.get('style'),
+        customStyle: formData.get('customStyle') || '',
+        stylizationEnabled: formData.get('stylizationEnabled') === 'on',
+        userALanguage: formData.get('userALanguage'),
+        userACustomLanguage: formData.get('userACustomLanguage') || '',
+        userBLanguage: formData.get('userBLanguage'),
+        userBCustomLanguage: formData.get('userBCustomLanguage') || '',
+        icebreakerPeriodDays: parseInt(formData.get('icebreakerPeriod'))
+      };
+
+      try {
+        const response = await fetch('/api/config', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(data)
+        });
+
+        if (response.ok) {
+          document.getElementById('statusMessage').style.display = 'block';
+          setTimeout(() => {
+            document.getElementById('statusMessage').style.display = 'none';
+          }, 3000);
+          location.reload();
+        } else {
+          alert('Failed to save settings');
+        }
+      } catch (error) {
+        alert('Error saving settings: ' + error.message);
+      }
+    });
+    
+    document.getElementById('resetForm').addEventListener('submit', async function(e) {
+      e.preventDefault();
+
+      if (!confirm('Are you sure you want to reset all configuration and delete message history?')) {
+        return;
+      }
+
+      try {
+        const response = await fetch('/api/config/reset', {
+          method: 'POST'
+        });
+
+        if (response.ok) {
+          location.reload();
+        } else {
+          alert('Failed to reset configuration');
+        }
+      } catch (error) {
+        alert('Error resetting configuration: ' + error.message);
+      }
+    });
+    
+    async function triggerFeedbackLoop() {
+      try {
+        const response = await fetch('/api/feedback-loop/trigger', {
+          method: 'POST'
+        });
+
+        if (response.ok) {
+          const data = await response.json();
+          const statusEl = document.getElementById('statusMessage');
+          
+          if (data.improvements && data.improvements.length > 0) {
+            let improvementsHtml = '';
+            for (const imp of data.improvements) {
+              const issues = imp.issues.map(function(i) { return i.suggestion; }).join('; ');
+              improvementsHtml += '<div class="improvement-item"><strong>' + imp.style + '/' + imp.language + ':</strong> ' + imp.action + ' (' + imp.source + ')<br>Issues: ' + issues + '</div>';
+            }
+            
+            statusEl.innerHTML = 'Feedback loop completed! ' + data.improvements.length + ' improvement(s) applied:<div class="improvements">' + improvementsHtml + '</div>';
+          } else {
+            statusEl.innerHTML = 'Feedback loop completed! No improvements needed.';
+          }
+          
+          statusEl.style.display = 'block';
+          setTimeout(function() {
+            statusEl.style.display = 'none';
+          }, 5000);
+          location.reload();
+        } else {
+          alert('Failed to run feedback loop');
+        }
+      } catch (error) {
+        alert('Error running feedback loop: ' + error.message);
+      }
+    }
+    window.triggerFeedbackLoop = triggerFeedbackLoop;
+    
+    // Load evaluation metrics - show only average scores for last 10 traces
+    async function loadEvaluations() {
+      try {
+        const response = await fetch('/api/traces/evaluations');
+        if (response.ok) {
+          const data = await response.json();
+          const tbody = document.getElementById('evaluationsBody');
+          
+          const formatScore = (score) => {
+            if (score === undefined || score === null) return '-';
+            const num = parseFloat(score);
+            const color = num >= 0.7 ? '#28a745' : num >= 0.5 ? '#ffc107' : '#dc3545';
+            return '<span style="color: ' + color + '; font-weight: bold;">' + num.toFixed(2) + '</span>';
+          };
+          
+          if (data.averages) {
+            const avg = data.averages;
+            tbody.innerHTML = '<tr style="background: #f0f0f0; font-weight: bold;">' +
+              '<td style="padding: 8px; text-align: center;">' + formatScore(avg.completeness) + '</td>' +
+              '<td style="padding: 8px; text-align: center;">' + formatScore(avg.perspective) + '</td>' +
+              '<td style="padding: 8px; text-align: center;">' + formatScore(avg.clarity) + '</td>' +
+              '<td style="padding: 8px; text-align: center;">' + formatScore(avg.grammar) + '</td>' +
+              '<td style="padding: 8px; text-align: center;">' + formatScore(avg.appropriateness) + '</td>' +
+              '<td style="padding: 8px; text-align: center;">' + formatScore(avg.naturalness) + '</td>' +
+              '</tr>';
+          } else {
+            tbody.innerHTML = '<tr><td colspan="6" style="padding: 20px; text-align: center; color: #999;">__NO_EVALUATIONS__</td></tr>';
+          }
+        }
+      } catch (error) {
+        console.error('Error loading evaluations:', error);
+      }
+    }
+    
+    // Load evaluations on page load
+    loadEvaluations();
+    window.loadEvaluations = loadEvaluations;
+    
+    // Load user feedback
+    async function loadFeedback() {
+      try {
+        const response = await fetch('/api/feedback');
+        if (response.ok) {
+          const data = await response.json();
+          const feedbackList = document.getElementById('feedbackList');
+          
+          if (data.feedback && data.feedback.length > 0) {
+            feedbackList.innerHTML = '<strong>__LAST_FEEDBACK__</strong><br>' +
+              data.feedback.slice(0, 1).map(f => 
+                '<div style="margin-top: 5px; padding: 5px; background: white; border-radius: 4px;">' +
+                '"' + f.comment + '"' +
+                '<br><span style="font-size: 10px; color: #999;">' + f.style + '/' + f.language + ' - ' + new Date(f.timestamp).toLocaleString() + '</span>' +
+                '</div>'
+              ).join('');
+          } else {
+            feedbackList.innerHTML = '<span style="color: #999;">__NO_FEEDBACK__</span>';
+          }
+        }
+      } catch (error) {
+        console.error('Error loading feedback:', error);
+      }
+    }
+    loadFeedback();
+    window.loadFeedback = loadFeedback;
+  </script>
+</body>
+</html>

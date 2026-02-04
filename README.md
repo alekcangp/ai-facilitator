@@ -1,144 +1,163 @@
 # Telegram Facilitator Bot
 
-A 1-to-1 duplex Telegram bot that mediates messages between two users with AI-powered message stylization, translation, and context-aware icebreakers.
+1-to-1 Telegram bot with AI message stylization, translation, and automatic icebreakers.
 
-## Features
+## Key Features
 
-- **Duplex Messaging**: Mediates messages between exactly two users
-- **AI Stylization**: Rewrites messages using Google Gemma LLM in various styles
-- **Translation**: Can be used as a translator between users speaking different languages
-- **Icebreakers**: Automatically sends conversation starters when inactive
-- **Privacy-First**: Never stores original messages, only stylized versions
-- **Web UI**: Simple configuration interface
-- **Vercel-Ready**: Deploy for free on Vercel with Redis storage (local uses JSON)
+- **Duplex Messaging** - Connects exactly two users via bot
+- **AI Stylization** - Rewrites messages using Gemma LLM (7 styles)
+- **Translation** - Auto-translate between users speaking different languages
+- **Icebreakers** - Sends conversation starters when conversation goes idle
+- **User Feedback** - Users can rate messages with `/feedback` command
+- **Auto-Improvement** - Prompts improve based on feedback and evaluations
 
-## Tech Stack
 
-- Node.js 18+ (ES Modules)
-- Express.js
-- Telegram Bot API
-- Google Gemini API (Gemma model)
-- Storage: JSON (local) / Redis (Vercel)
+## Architecture
 
-## Quick Start
-
-### 1. Get API Keys
-
-- **Telegram Bot Token**: Create a bot via [@BotFather](https://t.me/BotFather)
-- **Google Gemini API Key**: Get from [Google AI Studio](https://makersuite.google.com/app/apikey)
-
-### 2. Install & Configure
-
-```bash
-# Clone and install
-git clone https://github.com/alekcangp/ai-facilitator
-cd telegram-facilitator-bot
-npm install
-
-# Configure environment
-cp .env.example .env
-# Edit .env with your API keys
+```
+User A → Telegram → Bot → Gemma Stylization → Telegram → User B
+                    ↓
+                   Opik (tracing + scores + storage)
 ```
 
-### 3. Run Locally
+## How It Works
 
-```bash
-npm start
+1. User sends message to bot
+2. Bot identifies sender (A or B)
+3. Gemma rewrites message in selected style
+4. Bot forwards to other user
+5. Trace stored in Opik
+
+---
+
+## Gemma Integration
+
+**Purpose**: Message stylization, translation and icebreaker generation
+
+**Model**: `gemma-3-27b-it`
+
+**Usage** ([`src/llm.js`](src/llm.js)):
+- [`stylizeMessage()`](src/llm.js:59) - Rewrites message in requested style
+- [`generateIcebreaker()`](src/llm.js:147) - Creates context-aware conversation starters
+
+**Environment**: `GEMINI_API_KEY` required
+
+---
+
+## Opik Integration
+
+**Purpose**: LLM observability, evaluation, tracing, and storage
+
+**Storage** ([`src/opik.js`](src/opik.js)):
+- **Traces** - Logs all LLM calls (inputs, outputs, latency)
+- **Config** - Persists bot configuration
+- **Prompts** - Stores improved prompts per style/language
+- **Messages** - Stores conversation history for icebreakers
+
+**Key Functions**:
+- [`createSimpleTrace()`](src/opik.js:58) - Log LLM operations
+- [`getPromptConfig()`](src/opik.js:204) - Retrieve stored prompts
+- [`updatePromptConfig()`](src/opik.js:221) - Save improved prompts
+- [`fetchRecentMessagesFromOpik()`](src/opik.js:315) - Get conversation history
+
+---
+
+## User Feedback & Auto-Improvement
+
+### User Feedback Command
+
+Users can provide feedback on stylized messages:
+
+```
+/feedback Your comment here
 ```
 
-Web UI available at `http://localhost:3000`
+Example: `/feedback Add more warmth and emoji`
 
-**Note**: Local deployment uses JSON storage (no Redis required).
+**Flow** ([`src/user-feedback.js`](src/user-feedback.js)):
+1. User sends `/feedback <comment>`
+2. Bot analyzes comment using Gemma
+3. Prompt is improved based on feedback
+4. Improvement is stored in Opik
 
-### 4. Register Users
+### Evaluation-Based Improvement
 
-1. Share the bot with User A → they send any message to register
-2. Share the bot with User B → they send any message to register
-3. Both users can now message each other through the bot
+Automatic prompt improvement based on evaluation scores ([`src/opik-feedback.js`](src/opik-feedback.js)):
+- Evaluates message quality every 10 messages
+- Improves prompts when scores drop below 0.7 threshold
+- Max 10 improvements per day per style/language
 
-## Deploy to Vercel
+---
 
-**Note**: Vercel deployment requires Redis storage (unlike local deployment which uses JSON).
+## Opik Setup Required
 
-### Option 1: Deploy via Vercel Dashboard (UI)
+**Important**: Before deploying, create in Opik:
 
-1. Push your code to GitHub/GitLab/Bitbucket
-2. Go to [vercel.com](https://vercel.com) and sign up/login
-3. Click "Add New Project" → Import your repository
-4. **Create Redis database**: In Vercel dashboard, go to Storage → Create Database → Redis
-5. **Connect Redis**: Select your project and click "Connect"
-6. Configure environment variables:
-   - `BOT_TOKEN`: your Telegram bot token
-   - `GEMINI_API_KEY`: your Google Gemini API key
-7. Click "Deploy"
+1. **Create Project**: Go to Opik → Projects → Create Project
+   - Note your project name (set in `OPIK_PROJECT_NAME`)
 
-### Option 2: Deploy via Vercel CLI
+2. **Create Online Evaluation Rule**: Go to Project Page → Online Evaluations → Create New Rule
+   - Select the LLM-as-a-Judge prompt to use. [Read more](https://www.comet.com/docs/opik/production/rules?from=llm#writing-your-own-llm-as-a-judge-metric)
+   - Configure metrics, for example: completeness, perspective, grammar, appropriateness, naturalness, clarity
 
-```bash
-# Install Vercel CLI
-npm i -g vercel
-vercel login
+---
 
-# Deploy
-vercel
+## Vercel Deployment
 
-# Set environment variables when prompted:
-# BOT_TOKEN: your Telegram bot token
-# GEMINI_API_KEY: your Google Gemini API key
-```
+### Setup
 
-**Note**: After CLI deployment, go to Vercel dashboard → Storage → Create Database → Redis → Connect to your project. The `REDIS_URL` is automatically set when you connect Redis.
+1. Push code to GitHub
+2. Go to [vercel.com](https://vercel.com) → Add New Project
+3. Import your repository
+4. Add environment variables:
+   - `BOT_TOKEN` - Telegram bot token
+   - `GEMINI_API_KEY` - Google Gemini API key
+   - `OPIK_API_KEY` - Opik API key
+   - `OPIK_PROJECT_NAME` - Your Opik project name
+5. Deploy
 
-### Set Webhook (Required for Vercel)
-
-After deployment, set up the Telegram webhook:
-
+### Set Webhook
 ```bash
 npm run set-webhook https://your-app.vercel.app
 ```
 
+### GitHub Actions Cron
+
+Automated icebreaker checking via GitHub Actions (runs every hour)
+
+**Setup**:
+1. Push code to GitHub with workflow file (`.github/workflows/cron-icebreaker.yml`)
+2. In your GitHub repository: **Settings → Secrets and variables → Actions**
+3. Add repository secret:
+   - `CRON_URL` - `https://your-app.vercel.app/api/cron/icebreaker`
+
+
+---
+
+## Local Development
+
+```bash
+# Install
+npm install
+
+# Configure
+cp .env.example .env
+# Edit .env with your API keys
+
+# Run
+npm start
+# Web UI: http://localhost:3000
+```
+
+---
+
 ## Configuration
 
-Visit the web UI to:
-- Select message style (friendly, formal, playful, romantic, intellectual, casual, poetic, or custom)
-- Set user language (for translation between users)
+Access web UI to:
+
+- Select style: friendly, formal, playful, romantic, intellectual, casual, poetic
+- Set user languages (auto-detect or manual)
 - Configure icebreaker period (3-30 days)
-- View recent messages
-- Reset configuration
+- View registered users, message history and metrics.
 
-## Environment Variables
-
-| Variable | Required | Description |
-|----------|----------|-------------|
-| `BOT_TOKEN` | Yes | Telegram bot token from @BotFather |
-| `GEMINI_API_KEY` | Yes | Google Gemini API key |
-| `REDIS_URL` | Vercel only | Redis URL (auto-set when using Vercel Redis) |
-| `PORT` | No | Server port (default: 3000) |
-
-**Note**: Local deployment uses JSON storage (no Redis needed). For Vercel deployment, create a Redis database in the Vercel dashboard and connect it to your project. The `REDIS_URL` is automatically configured.
-
-## How It Works
-
-```
-User A → Bot → Stylize → User B
-User B → Bot → Stylize → User A
-```
-
-1. Either user sends a message to the bot
-2. Bot detects which user sent it (A or B)
-3. Bot stylizes the message using Gemma LLM
-4. Bot forwards the stylized message to the other user
-5. Bot stores only the stylized version (never the original)
-
-## Privacy
-
-**Stored:** Stylized messages, sender role, timestamps, configuration settings
-
-**NOT Stored:** Original messages, raw Telegram payloads, user personal data beyond usernames
-
-## Scripts
-
-- `npm start` - Start the server
-- `npm run dev` - Start with auto-reload
-- `npm run set-webhook <url>` - Set Telegram webhook
-- `npm run clear-webhook` - Clear Telegram webhook
+---

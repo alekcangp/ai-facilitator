@@ -1,0 +1,41 @@
+name: Scheduled Icebreaker
+
+on:
+  schedule:
+    # Run every hour - icebreaker will be triggered randomly
+    - cron: '0 * * * *'
+  workflow_dispatch:
+    inputs:
+      force:
+        description: 'Force icebreaker check even if not due'
+        required: false
+        default: 'false'
+
+jobs:
+  trigger-icebreaker:
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Trigger Icebreaker Endpoint
+        env:
+          CRON_URL: ${{ secrets.CRON_URL }}
+        run: |
+          if [ -z "$CRON_URL" ]; then
+            echo "CRON_URL not configured, skipping"
+            exit 0
+          fi
+          
+          response=$(curl -s -w "\n%{http_code}" -X POST "$CRON_URL")
+          
+          http_code=$(echo "$response" | tail -n1)
+          body=$(echo "$response" | sed '$d')
+          
+          echo "HTTP Status: $http_code"
+          echo "Response: $body"
+          
+          if [ "$http_code" = "200" ]; then
+            echo "Icebreaker check completed successfully"
+          else
+            echo "Icebreaker check failed"
+            exit 1
+          fi

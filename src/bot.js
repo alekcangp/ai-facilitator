@@ -6,27 +6,19 @@
  */
 
 import TelegramBot from 'node-telegram-bot-api';
-import { stylizeMessage, translateMessage } from './llm.js';
+import { stylizeMessage } from './llm.js';
 import { triggerIcebreakerCheck } from './icebreaker.js';
 import { t } from './translations.js';
-
-// Dynamic import for storage module based on environment
-let readConfig, writeConfig, addMessage, readMessages;
-
-async function loadStorageModule() {
-  // Use JSON storage for local development, Redis for Vercel
-  const isVercel = process.env.VERCEL === '1';
-  const storageModule = await import(isVercel ? './storage-kv.js' : './storage.js');
-
-  readConfig = storageModule.readConfig;
-  writeConfig = storageModule.writeConfig;
-  addMessage = storageModule.addMessage;
-  readMessages = storageModule.readMessages;
-}
+import { getTraceId, createSimpleTrace } from './opik.js';
+import { readConfig, writeConfig } from './opik.js';
+import { processFeedbackComment } from './user-feedback.js';
 
 // Bot instance (will be initialized)
 let bot = null;
 let isInitializing = false;
+
+// Store last message trace info for feedback (userId -> trace info)
+const lastMessageTraces = new Map();
 
 /**
  * Initialize the Telegram bot
@@ -109,11 +101,6 @@ function getRecipientId(senderRole, config) {
  */
 export async function sendToUser(role, text) {
   try {
-    // Ensure storage module is loaded
-    if (!readConfig) {
-      await loadStorageModule();
-    }
-    
     const config = await readConfig();
     
     let telegramId;
@@ -146,11 +133,6 @@ export async function sendToUser(role, text) {
  */
 export async function handleMessage(msg) {
   try {
-    // Ensure storage module is loaded
-    if (!readConfig) {
-      await loadStorageModule();
-    }
-
     const config = await readConfig();
 
     // Get language from config (default to 'en')
@@ -167,14 +149,13 @@ export async function handleMessage(msg) {
       const senderRole = identifySender(telegramId, config);
 
       // If already registered, update their languageCode only if language is 'auto'
+      // Keep in-memory only, don't persist to Opik
       if (senderRole) {
         // Update languageCode only if language setting is 'auto'
         if (senderRole === 'A' && config.userA.language === 'auto') {
           config.userA.languageCode = msg.from.language_code || 'en';
-          await writeConfig(config);
         } else if (senderRole === 'B' && config.userB.language === 'auto') {
           config.userB.languageCode = msg.from.language_code || 'en';
-          await writeConfig(config);
         }
 
         await bot.sendMessage(
@@ -186,9 +167,13 @@ export async function handleMessage(msg) {
 
       // If userA is not set, register as userA
       if (!config.userA.telegramId) {
-        config.userA.telegramId = telegramId;
-        config.userA.username = username;
-        config.userA.languageCode = msg.from.language_code || 'en';
+        // Preserve existing language settings if configured via UI
+        config.userA = {
+          ...config.userA,
+          telegramId,
+          username,
+          languageCode: msg.from.language_code || 'en'
+        };
         await writeConfig(config);
 
         await bot.sendMessage(
@@ -200,9 +185,13 @@ export async function handleMessage(msg) {
 
       // If userB is not set, register as userB
       if (!config.userB.telegramId) {
-        config.userB.telegramId = telegramId;
-        config.userB.username = username;
-        config.userB.languageCode = msg.from.language_code || 'en';
+        // Preserve existing language settings if configured via UI
+        config.userB = {
+          ...config.userB,
+          telegramId,
+          username,
+          languageCode: msg.from.language_code || 'en'
+        };
         await writeConfig(config);
 
         await bot.sendMessage(
@@ -220,6 +209,115 @@ export async function handleMessage(msg) {
       return;
     }
 
+    // Handle /feedback command - Provide feedback on the last message
+    // Format: /feedback <your comment>
+    // Example: /feedback Add more warmth and emoji
+    const feedbackCommand = messageText && messageText.toLowerCase().match(/^\/feedback\s+(.+)/i);
+    
+    if (feedbackCommand) {
+      const senderRole = identifySender(telegramId, config);
+      if (!senderRole) {
+        await bot.sendMessage(
+          telegramId,
+          t(lang, 'notRegistered') || (lang === 'ru' ? 'Сначала зарегистрируйтесь!' : 'Please register first!')
+        );
+        return;
+      }
+      
+      // Get the comment (everything after /feedback)
+      const comment = feedbackCommand[1].trim();
+      
+      if (!comment) {
+        await bot.sendMessage(
+          telegramId,
+          t(lang, 'feedbackUsage') || (lang === 'ru'
+            ? 'Использование: /feedback <ваш комментарий>\n\nНапример: /feedback Добавь больше тепла и эмодзи'
+            : 'Usage: /feedback <your comment>\n\nExample: /feedback Add more warmth and emoji')
+        );
+        return;
+      }
+
+      // Get last message trace info for this user
+      const traceInfo = lastMessageTraces.get(telegramId);
+      if (!traceInfo) {
+        await bot.sendMessage(
+          telegramId,
+          t(lang, 'noMessageToRate') || (lang === 'ru'
+            ? 'Нет сообщения для отзыва. Сначала получите стилизованное сообщение.'
+            : 'No message to rate. First receive a stylized message.')
+        );
+        return;
+      }
+
+      // Store feedback and immediately process improvement
+      try {
+        // Process feedback and improve prompt immediately
+        const improvementResult = await processFeedbackComment(
+          comment,
+          traceInfo.style,
+          traceInfo.language
+        );
+        
+        if (improvementResult && improvementResult.improved) {
+          await bot.sendMessage(
+            telegramId,
+            t(lang, 'feedbackThanksImproved') || (lang === 'ru'
+              ? `Спасибо за отзыв! Я улучшил стиль на основе вашего комментария: "${comment}"`
+              : `Thank you for your feedback! I've improved the style based on your comment: "${comment}"`)
+          );
+        } else {
+          await bot.sendMessage(
+            telegramId,
+            t(lang, 'feedbackThanks') || (lang === 'ru'
+              ? `Спасибо за отзыв! Я учту ваш комментарий: "${comment}"`
+              : `Thank you for your feedback! I'll consider your comment: "${comment}"`)
+          );
+        }
+      } catch (error) {
+        console.error('Error processing feedback:', error);
+        await bot.sendMessage(
+          telegramId,
+          t(lang, 'feedbackError') || (lang === 'ru'
+            ? 'Ошибка при обработке отзыва. Попробуйте позже.'
+            : 'Error processing feedback. Please try again later.')
+        );
+      }
+
+      // Clear the trace info after feedback
+      lastMessageTraces.delete(telegramId);
+      return;
+    }
+
+    // Handle /feedback command - Show last message and prompt for feedback
+    if (messageText === '/feedback') {
+      const senderRole = identifySender(telegramId, config);
+      if (!senderRole) {
+        await bot.sendMessage(
+          telegramId,
+          lang === 'ru' ? 'Сначала зарегистрируйтесь!' : 'Please register first!'
+        );
+        return;
+      }
+
+      const traceInfo = lastMessageTraces.get(telegramId);
+      if (!traceInfo) {
+        await bot.sendMessage(
+          telegramId,
+          lang === 'ru'
+            ? 'Нет сообщения для отзыва'
+            : 'No message to provide feedback on'
+        );
+        return;
+      }
+
+      const feedbackText = lang === 'ru'
+        ? `Последнее сообщение:\n\n"${traceInfo.stylizedMessage}"\n\nОставьте отзыв:\n/feedback <ваш комментарий>\n\nНапример: /feedback Добавь больше тепла`
+        : `Last message:\n\n"${traceInfo.stylizedMessage}"\n\nLeave feedback:\n/feedback <your comment>\n\nExample: /feedback Add more warmth`;
+
+      await bot.sendMessage(telegramId, feedbackText);
+      return;
+    }
+
     // Ignore non-text messages
     if (!messageText) {
       return;
@@ -232,9 +330,13 @@ export async function handleMessage(msg) {
     if (!senderRole) {
       // If userA is not set, register as userA
       if (!config.userA.telegramId) {
-        config.userA.telegramId = telegramId;
-        config.userA.username = username;
-        config.userA.languageCode = msg.from.language_code || 'en';
+        // Preserve existing language settings if configured via UI
+        config.userA = {
+          ...config.userA,
+          telegramId,
+          username,
+          languageCode: msg.from.language_code || 'en'
+        };
         await writeConfig(config);
 
         await bot.sendMessage(
@@ -246,9 +348,13 @@ export async function handleMessage(msg) {
 
       // If userB is not set, register as userB
       if (!config.userB.telegramId) {
-        config.userB.telegramId = telegramId;
-        config.userB.username = username;
-        config.userB.languageCode = msg.from.language_code || 'en';
+        // Preserve existing language settings if configured via UI
+        config.userB = {
+          ...config.userB,
+          telegramId,
+          username,
+          languageCode: msg.from.language_code || 'en'
+        };
         await writeConfig(config);
 
         await bot.sendMessage(
@@ -263,13 +369,11 @@ export async function handleMessage(msg) {
     }
 
     // Update sender's languageCode only if their language setting is 'auto'
-    // Don't override if they've explicitly set a language via UI
+    // Keep in-memory only, don't persist to Opik on every message
     if (senderRole === 'A' && config.userA.language === 'auto') {
       config.userA.languageCode = msg.from.language_code || 'en';
-      await writeConfig(config);
     } else if (senderRole === 'B' && config.userB.language === 'auto') {
       config.userB.languageCode = msg.from.language_code || 'en';
-      await writeConfig(config);
     }
     
     // Get recipient ID
@@ -315,33 +419,99 @@ export async function handleMessage(msg) {
 
     // Process the message based on stylization setting
     let processedText;
+    let traceInfo = null;
     const stylizationEnabled = config.stylizationEnabled !== false; // Default to true
 
     if (!stylizationEnabled && languagesAreSame) {
-      // Stylization disabled and same language: just forward the original message
+      // Stylization disabled and same language: forward original, but still trace for tracking
       processedText = messageText;
-      console.log(`Stylization disabled, same language: forwarding original message`);
-    } else if (!stylizationEnabled && !languagesAreSame) {
-      // Stylization disabled but different languages: translate only
-      processedText = await translateMessage(
-        messageText,
-        senderLanguage,
-        recipientLanguage
+      const trace = createSimpleTrace(
+        'stylize_message',
+        {
+          original_message: messageText,
+          style: 'none',
+          custom_style: null,
+          language: senderLanguage,
+          user_id: telegramId,
+          username: username,
+          user_role: senderRole,
+          conversation_id: null,
+          prompt: '[no stylization - original message]',
+        },
+        {
+          result: messageText,
+          language: recipientLanguage,
+          success: true,
+          model: 'none',
+          latency: 0,
+          fallback: false,
+        },
+        { message_type: 'stylize', style: 'none' }
       );
+      traceInfo = {
+        trace,
+        model: null,
+        latency: null
+      };
+      console.log(`Stylization disabled, same language: forwarding original message (traced)`);
+    } else if (!stylizationEnabled && !languagesAreSame) {
+      // Stylization disabled but different languages: stylize without style
+      // Use 'neutral' style with just translation
+      const result = await stylizeMessage(
+        messageText,
+        'neutral',  // Use neutral style for translation-only
+        '',
+        recipientLanguage,
+        senderLanguage,
+        telegramId,
+        senderRole,
+        username,
+        null // conversationId
+      );
+      processedText = result.text;
+      traceInfo = {
+        trace: result.trace,
+        model: result.model,
+        latency: result.latency
+      };
       console.log(`Stylization disabled, different languages: translating from ${senderLanguage} to ${recipientLanguage}`);
     } else {
       // Stylization enabled: use full stylization (includes translation if needed)
-      processedText = await stylizeMessage(
+      // Uses ONE common prompt with style and language as parameters
+      const result = await stylizeMessage(
         messageText,
         config.style,
         config.customStyle,
-        recipientLanguage
+        recipientLanguage,  // Output language (recipient's)
+        senderLanguage,      // Input language (sender's)
+        telegramId,
+        senderRole,
+        username,
+        null // conversationId
       );
-      console.log(`Stylization enabled: stylizing in ${recipientLanguage}`);
+      processedText = result.text;
+      traceInfo = {
+        trace: result.trace,
+        model: result.model,
+        latency: result.latency
+      };
+      console.log(`Stylization enabled: ${config.style} style in ${recipientLanguage}`);
     }
 
-    // Store the processed message (never the original)
-    await addMessage(senderRole, processedText);
+    // Messages stored in Opik traces, no local storage needed
+    // Store trace info for feedback (for the recipient)
+    const recipientTelegramId = getRecipientId(senderRole, config);
+    if (recipientTelegramId && traceInfo.trace) {
+      lastMessageTraces.set(recipientTelegramId, {
+        messageId: traceInfo.trace.id,
+        traceId: getTraceId(traceInfo.trace),
+        trace: traceInfo.trace,
+        originalMessage: messageText,
+        stylizedMessage: processedText,
+        style: config.style,
+        language: recipientLanguage
+      });
+    }
 
     // Forward the processed message to the recipient
     await bot.sendMessage(recipientId, processedText);

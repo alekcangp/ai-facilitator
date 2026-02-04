@@ -7,47 +7,26 @@
 
 import dotenv from 'dotenv';
 import { GoogleGenAI } from '@google/genai';
+import { 
+  createSimpleTrace
+} from './opik.js';
+import { 
+  getStyleDescription,
+  getLanguageName,
+  generateBasePrompt,
+  getAvailableStyles,
+  getStylePresetDescription
+ } from './prompts.js';
+import { getPromptConfig, fetchRecentMessagesFromOpik } from './opik.js';
+import { 
+  shouldEvaluateAndImprove
+} from './opik-feedback.js';
 
 // Load environment variables
 dotenv.config();
 
 // Initialize GenAI client
 const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY });
-
-// Preset styles with their descriptions
-const STYLE_PRESETS = {
-  friendly: 'warm, casual, and conversational',
-  formal: 'professional, polite, and respectful',
-  playful: 'fun, lighthearted, and enthusiastic',
-  romantic: 'affectionate, caring, and intimate',
-  intellectual: 'thoughtful, analytical, and articulate',
-  casual: 'relaxed, informal, and natural',
-  poetic: 'expressive, metaphorical, and artistic'
-};
-
-// Language names mapping for better instructions
-const LANGUAGE_NAMES = {
-  en: 'English',
-  ru: 'Russian',
-  es: 'Spanish',
-  fr: 'French',
-  de: 'German',
-  it: 'Italian',
-  pt: 'Portuguese',
-  zh: 'Chinese',
-  ja: 'Japanese',
-  ko: 'Korean',
-  ar: 'Arabic',
-  nl: 'Dutch',
-  pl: 'Polish',
-  tr: 'Turkish',
-  uk: 'Ukrainian',
-  cs: 'Czech',
-  sv: 'Swedish',
-  da: 'Danish',
-  no: 'Norwegian',
-  fi: 'Finnish'
-};
 
 // Fallback icebreaker messages by language
 const FALLBACK_ICEBREAKERS = {
@@ -74,155 +53,119 @@ const FALLBACK_ICEBREAKERS = {
 };
 
 /**
- * Get the style description for a given style
- */
-function getStyleDescription(style, customStyle) {
-  if (style === 'custom' && customStyle) {
-    return customStyle;
-  }
-  return STYLE_PRESETS[style] || STYLE_PRESETS.friendly;
-}
-
-/**
- * Translate a message from one language to another without stylization
- *
- * @param {string} originalMessage - The original message text
- * @param {string} sourceLanguage - Source language code (e.g., 'en', 'ru', 'es', 'fr', etc.)
- * @param {string} targetLanguage - Target language code (e.g., 'en', 'ru', 'es', 'fr', etc.)
- * @returns {Promise<string>} - The translated message text only
- */
-export async function translateMessage(originalMessage, sourceLanguage, targetLanguage) {
-  try {
-    const sourceLanguageName = LANGUAGE_NAMES[sourceLanguage] || sourceLanguage;
-    const targetLanguageName = LANGUAGE_NAMES[targetLanguage] || targetLanguage;
-
-    // Create a prompt that ensures only the translated message is returned
-    const prompt = `You are a professional translator. Your task is to translate the given message from ${sourceLanguageName} to ${targetLanguageName}.
-
-IMPORTANT RULES:
-- Return ONLY the translated message, nothing else
-- No explanations, no metadata, no quotes around the message
-- Keep the same core meaning and intent
-- Make it sound natural and human
-
-Original message: ${originalMessage}
-
-Translated message:`;
-
-    const response = await ai.models.generateContent({
-      model: 'gemma-3-27b-it',
-      contents: prompt
-    });
-
-    let translatedText = response.text.trim();
-
-    // Remove any quotes if the model added them
-    translatedText = translatedText.replace(/^["']|["']$/g, '');
-
-    // If the result is empty or too short, return original
-    if (!translatedText || translatedText.length < 2) {
-      return originalMessage;
-    }
-
-    return translatedText;
-
-  } catch (error) {
-    console.error('Error translating message:', error);
-    // On error, return original message to ensure delivery
-    return originalMessage;
-  }
-}
-
-/**
  * Stylize a message using Gemma LLM
- *
- * @param {string} originalMessage - The original message text
- * @param {string} style - The style preset to use
- * @param {string} customStyle - Custom style description (if style is 'custom')
- * @param {string} targetLanguage - Target language for the response (e.g., 'en', 'ru', 'es', 'fr', etc.)
- * @returns {Promise<string>} - The stylized message text only
+ * Uses stored improved prompts when available
  */
-export async function stylizeMessage(originalMessage, style, customStyle = '', targetLanguage = 'en') {
+export async function stylizeMessage(originalMessage, style, customStyle = '', recipientLanguage = 'en', senderLanguage = 'en', userId = null, userRole = null, username = null, conversationId = null) {
   try {
-    const styleDescription = getStyleDescription(style, customStyle);
+    // Check for stored improved prompt first
+    let promptTemplate = null;
+    try {
+      const promptConfig = await getPromptConfig(style, recipientLanguage);
+      if (promptConfig && promptConfig.prompt) {
+        promptTemplate = promptConfig.prompt;
+        console.log(`Using stored improved prompt for ${style}/${recipientLanguage}`);
+      }
+    } catch (e) {
+      // Storage not available, use default
+    }
     
-    const languageName = LANGUAGE_NAMES[targetLanguage] || targetLanguage;
+    // Fall back to base prompt if no stored improvement
+    if (!promptTemplate) {
+      promptTemplate = generateBasePrompt(style, customStyle, recipientLanguage);
+    }
     
-    // Language-specific instructions
-    const languageInstruction = `Write the response EXCLUSIVELY in ${languageName} language.`;
-    
-    // Create a prompt that ensures only the rewritten message is returned
-    const prompt = `You are a message rewriter. Your task is to rewrite the given message in a ${styleDescription} style.
+    // Replace {message} placeholder with actual message
+    const prompt = promptTemplate.replace('{message}', originalMessage);
 
-IMPORTANT RULES:
-- Return ONLY the rewritten message, nothing else
-- No explanations, no metadata, no quotes around the message
-- Do not add emojis unless the style naturally includes them
-- Keep the same core meaning and intent
-- Make it sound natural and human
-- Maintain approximately the same length as the original message (within 50% difference)
-- Do not expand or condense the message significantly - keep it concise and similar in scope
-- PRESERVE the original perspective (first person, second person, or third person) - do not change it
- - ${languageInstruction}
-
-Original message: ${originalMessage}
-
-Rewritten message:`;
-
+    const startTime = Date.now();
     const response = await ai.models.generateContent({
       model: 'gemma-3-27b-it',
       contents: prompt
     });
+    const latency = Date.now() - startTime;
     
-    let stylizedText = response.text.trim();
-    
-    // Remove any quotes if the model added them
-    stylizedText = stylizedText.replace(/^["']|["']$/g, '');
-    
-    // If the result is empty or too short, return original
-    if (!stylizedText || stylizedText.length < 2) {
-      return originalMessage;
+    let stylizedText = '';
+    try {
+      stylizedText = (response?.text || '').toString().trim();
+    } catch (e) {
+      console.error('Error extracting text from response:', e);
     }
     
-    return stylizedText;
+    if (stylizedText) {
+      stylizedText = stylizedText.replace(/^"[\s\S]*"|'[\s\S]*'|^[«»][\s\S]*[«»]$/g, '').trim();
+    }
+    
+    const finalResult = (!stylizedText || stylizedText.length < 2) ? originalMessage : stylizedText;
+    
+    const trace = createSimpleTrace(
+      'stylize_message',
+      {
+        original_message: originalMessage,
+        style,
+        custom_style: customStyle || null,
+        language: senderLanguage,
+        user_id: userId,
+        username: username,
+        user_role: userRole,
+        conversation_id: conversationId,
+        prompt: prompt,
+      },
+      {
+        result: finalResult,
+        language: recipientLanguage,
+        success: stylizedText.length >= 2,
+        model: 'gemma-3-27b-it',
+        latency,
+        fallback: stylizedText.length < 2,
+      },
+      { message_type: 'stylize', style }
+    );
+    
+    // Check evaluation scores and improve prompt (async, runs in background)
+    shouldEvaluateAndImprove(style, recipientLanguage).catch(err => {
+      console.error('[Evaluation] Error:', err.message);
+    });
+    
+    return { text: finalResult, trace, model: 'gemma-3-27b-it', latency };
     
   } catch (error) {
     console.error('Error stylizing message:', error);
-    // On error, return original message to ensure delivery
-    return originalMessage;
+    createSimpleTrace(
+      'stylize_message',
+      { original_message: originalMessage, style, custom_style: customStyle || null, language: senderLanguage, user_id: userId, username: username, error: error.message },
+      { result: originalMessage, language: recipientLanguage, success: false, error: error.message, fallback: true },
+      { message_type: 'stylize', style, error: true }
+    );
+    return { text: originalMessage, trace: null, model: null, latency: null };
   }
 }
 
 /**
- * Generate an icebreaker message based on conversation history
- * 
- * @param {Array} recentMessages - Array of recent stylized messages
- * @param {string} style - The style preset to use
- * @param {string} customStyle - Custom style description (if style is 'custom')
- * @param {string} language - Language to use (e.g., 'en', 'ru', 'es', 'fr', etc.)
- * @returns {Promise<string>} - The icebreaker message
+ * Generate an icebreaker message based on conversation history from Opik traces
  */
 export async function generateIcebreaker(recentMessages, style, customStyle = '', language = 'en') {
   try {
+    // If no messages provided, fetch from Opik traces
+    let messagesToUse = recentMessages;
+    if (!recentMessages || recentMessages.length === 0) {
+      messagesToUse = await fetchRecentMessagesFromOpik(20);
+    }
+    
     const styleDescription = getStyleDescription(style, customStyle);
-    
-    const languageName = LANGUAGE_NAMES[language] || language;
-    
-    // Language-specific instructions
+    const languageName = getLanguageName(language);
     const languageInstruction = `Write the response EXCLUSIVELY in ${languageName} language.`;
     
-    // Build context from recent messages
     let context = '';
-    if (recentMessages && recentMessages.length > 0) {
+    if (messagesToUse && messagesToUse.length > 0) {
       context = 'Recent conversation context:\n';
-      recentMessages.slice(-10).forEach(msg => {
+      messagesToUse.slice(-10).forEach(msg => {
         context += `- ${msg.stylizedText}\n`;
       });
     } else {
       context = 'No previous conversation context.';
     }
     
-    // Create icebreaker prompt
     const prompt = `You are generating a natural conversation starter (icebreaker) for two people who haven't spoken in a while.
 
 ${context}
@@ -240,40 +183,43 @@ IMPORTANT RULES:
 
 Icebreaker message:`;
 
+    const startTime = Date.now();
     const response = await ai.models.generateContent({
       model: 'gemma-3-27b-it',
       contents: prompt
     });
+    const latency = Date.now() - startTime;
     
     let icebreaker = response.text.trim();
+    icebreaker = icebreaker.replace(/^"[\s\S]*"|'[\s\S]*'|^[«»][\s\S]*[«»]$/g, '').trim();
     
-    // Remove any quotes if the model added them
-    icebreaker = icebreaker.replace(/^["']|["']$/g, '');
-    
-    // Fallback if result is empty
-    if (!icebreaker || icebreaker.length < 5) {
+    const useFallback = !icebreaker || icebreaker.length < 5;
+    if (useFallback) {
       icebreaker = FALLBACK_ICEBREAKERS[language] || FALLBACK_ICEBREAKERS.en;
     }
+    
+    const trace = createSimpleTrace(
+      'generate_icebreaker',
+      { style, custom_style: customStyle || null, language, message_count: recentMessages?.length || 0, context, prompt },
+      { result: icebreaker, language, success: !useFallback, model: 'gemma-3-27b-it', latency, fallback: useFallback },
+      { message_type: 'icebreaker', style }
+    );
     
     return icebreaker;
     
   } catch (error) {
     console.error('Error generating icebreaker:', error);
-    // Fallback icebreaker
+    createSimpleTrace(
+      'generate_icebreaker',
+      { style, custom_style: customStyle || null, language, error: error.message },
+      { result: FALLBACK_ICEBREAKERS[language] || FALLBACK_ICEBREAKERS.en, language, success: false, error: error.message, fallback: true },
+      { message_type: 'icebreaker', style, error: true }
+    );
     return FALLBACK_ICEBREAKERS[language] || FALLBACK_ICEBREAKERS.en;
   }
 }
 
-/**
- * Get list of available preset styles
- */
-export function getAvailableStyles() {
-  return Object.keys(STYLE_PRESETS);
-}
+// Re-export functions from prompts.js for backward compatibility
+export { getAvailableStyles, getStylePresetDescription };
 
-/**
- * Get style description for a preset
- */
-export function getStylePresetDescription(style) {
-  return STYLE_PRESETS[style] || null;
-}
+

@@ -1,128 +1,136 @@
 /**
  * Icebreaker System
- * 
+ *
  * Periodically sends context-aware icebreakers when conversation is inactive.
- * Icebreakers are bidirectional and match the selected style.
+ * Icebreakers are sent to BOTH users when timer is due.
+ *
+ * Uses Opik traces for persistent timestamp storage (works on Vercel).
+ *
+ * @module icebreaker
  */
 
 import { generateIcebreaker } from './llm.js';
+import { readConfig, fetchRecentMessagesFromOpik, getLastActivityTimestamp } from './opik.js';
 
-// Dynamic import for storage module based on environment
-let readConfig, getRecentMessages, getLastMessageTimestamp, getLastSenderRole, updateLastIcebreakerCheck;
+// Local scheduler interval
+let localSchedulerInterval = null;
 
-async function loadStorageModule() {
-  // Use JSON storage for local development, Redis for Vercel
-  const isVercel = process.env.VERCEL === '1';
-  const storageModule = await import(isVercel ? './storage-kv.js' : './storage.js');
-
-  readConfig = storageModule.readConfig;
-  getRecentMessages = storageModule.getRecentMessages;
-  getLastMessageTimestamp = storageModule.getLastMessageTimestamp;
-  getLastSenderRole = storageModule.getLastSenderRole;
-  updateLastIcebreakerCheck = storageModule.updateLastIcebreakerCheck;
+/**
+ * Start local icebreaker scheduler (for local development)
+ * Runs independently and sends icebreakers when due
+ * 
+ * @param {Function} sendToUser - Function to send message (role, text) => Promise
+ * @param {number} checkIntervalMs - How often to check (default: 1 hour)
+ */
+export function startLocalScheduler(sendToUser, checkIntervalMs = 3600000) {
+  if (localSchedulerInterval) {
+    console.log('[Icebreaker] Scheduler already running');
+    return;
+  }
+  
+  console.log(`[Icebreaker] Starting local scheduler (every ${checkIntervalMs / 60000} minutes)`);
+  
+  // Run initial check
+  checkAndSendIcebreaker(sendToUser);
+  
+  // Set interval
+  localSchedulerInterval = setInterval(() => {
+    checkAndSendIcebreaker(sendToUser);
+  }, checkIntervalMs);
 }
 
 /**
  * Calculate random icebreaker interval in milliseconds
- * Default: random between 5-10 days
+ * Default: random between periodDays ± 2 days, minimum 3 days
  * 
  * @param {number} periodDays - Base period in days
  * @returns {number} - Interval in milliseconds
  */
 function calculateIcebreakerInterval(periodDays) {
-  // Add randomness: periodDays ± 2 days, minimum 3 days
   const minDays = Math.max(3, periodDays - 2);
   const maxDays = periodDays + 2;
   const randomDays = minDays + Math.random() * (maxDays - minDays);
   
-  return randomDays * 24 * 60 * 60 * 1000; // Convert to milliseconds
+  return randomDays * 24 * 60 * 60 * 1000;
 }
 
 /**
- * Check if an icebreaker should be sent
- * 
- * @returns {Promise<Object|null>} - Returns icebreaker info if due, null otherwise
+ * Check and send icebreaker if due
+ * Sends to both users when timer is due
  */
-export async function checkIcebreakerDue() {
+async function checkAndSendIcebreaker(sendToUser) {
   try {
-    // Ensure storage module is loaded
-    if (!readConfig) {
-      await loadStorageModule();
-    }
-    
     const config = await readConfig();
-    const lastMessageTimestamp = await getLastMessageTimestamp();
+    const lastActivityTimestamp = await getLastActivityTimestamp();
     
-    // If no messages have been sent yet, don't send icebreaker
-    if (!lastMessageTimestamp) {
-      return null;
+    // If no activity yet, don't send icebreaker
+    if (!lastActivityTimestamp) {
+      return;
     }
     
-    const timeSinceLastMessage = Date.now() - lastMessageTimestamp;
+    const timeSinceLastActivity = Date.now() - lastActivityTimestamp;
     const icebreakerInterval = calculateIcebreakerInterval(config.icebreakerPeriodDays);
     
     // Check if enough time has passed
-    if (timeSinceLastMessage >= icebreakerInterval) {
-      const lastSenderRole = await getLastSenderRole();
-      
-      // Determine which user should receive the icebreaker (opposite of last sender)
-      const recipientRole = lastSenderRole === 'A' ? 'B' : 'A';
-      
-      // Get recipient's language
-      const recipientLanguage = recipientRole === 'A' 
-        ? (config.userA.language || 'en') 
-        : (config.userB.language || 'en');
-      
-      // Get recent messages for context
-      const recentMessages = await getRecentMessages(20);
-      
-      // Generate icebreaker in recipient's language
-      const icebreakerText = await generateIcebreaker(
-        recentMessages,
-        config.style,
-        config.customStyle,
-        recipientLanguage
-      );
-      
-      // Update last check time
-      await updateLastIcebreakerCheck();
-      
-      return {
-        recipientRole,
-        text: icebreakerText,
-        timestamp: Date.now()
-      };
+    if (timeSinceLastActivity < icebreakerInterval) {
+      return;
     }
     
-    return null;
+    // Time is due - send icebreakers to BOTH users
+    const recentMessages = await fetchRecentMessagesFromOpik(20);
+    
+    // Generate and send to User A
+    const languageA = config.userA.language === 'auto' 
+      ? (config.userA.languageCode || 'en') 
+      : config.userA.language;
+    const icebreakerA = await generateIcebreaker(
+      recentMessages,
+      config.style,
+      config.customStyle,
+      languageA
+    );
+    await sendToUser('A', icebreakerA);
+    console.log(`[Icebreaker] Sent to User A: ${icebreakerA}`);
+    
+    // Generate and send to User B
+    const languageB = config.userB.language === 'auto'
+      ? (config.userB.languageCode || 'en')
+      : config.userB.language;
+    const icebreakerB = await generateIcebreaker(
+      recentMessages,
+      config.style,
+      config.customStyle,
+      languageB
+    );
+    await sendToUser('B', icebreakerB);
+    console.log(`[Icebreaker] Sent to User B: ${icebreakerB}`);
     
   } catch (error) {
-    console.error('Error checking icebreaker:', error);
-    return null;
+    console.error('[Icebreaker] Error:', error.message);
   }
 }
 
 /**
- * Manually trigger icebreaker check (called on each message)
- * This is the lightweight approach that works on Vercel free tier
+ * Trigger scheduled icebreaker check (called by GitHub Actions cron)
+ * Sends icebreakers to both users using the provided sendToUser function
  * 
- * @param {Function} sendToUser - Function to send message to a user (role -> Promise)
- * @returns {Promise<boolean>} - True if icebreaker was sent
+ * @param {Function} sendToUser - Function to send message (role, text) => Promise
+ * @returns {Object} - Result with sent status
+ */
+export async function triggerScheduledIcebreaker(sendToUser) {
+  await checkAndSendIcebreaker(sendToUser);
+  return { sent: true };
+}
+
+/**
+ * Manually trigger icebreaker check (called on each message)
+ * 
+ * @param {Function} sendToUser - Function to send message (role, text) => Promise
  */
 export async function triggerIcebreakerCheck(sendToUser) {
   try {
-    const icebreaker = await checkIcebreakerDue();
-    
-    if (icebreaker) {
-      // Send icebreaker to the recipient
-      await sendToUser(icebreaker.recipientRole, icebreaker.text);
-      
-      console.log(`Icebreaker sent to User ${icebreaker.recipientRole}: ${icebreaker.text}`);
-      return true;
-    }
-    
-    return false;
-    
+    await checkAndSendIcebreaker(sendToUser);
+    return true;
   } catch (error) {
     console.error('Error triggering icebreaker check:', error);
     return false;
@@ -130,26 +138,21 @@ export async function triggerIcebreakerCheck(sendToUser) {
 }
 
 /**
- * Get next icebreaker due time (for display purposes)
+ * Get next icebreaker due time (for UI display)
  * 
  * @returns {Promise<Date|null>} - Date when next icebreaker is due, or null
  */
 export async function getNextIcebreakerDue() {
   try {
-    // Ensure storage module is loaded
-    if (!readConfig) {
-      await loadStorageModule();
-    }
-    
     const config = await readConfig();
-    const lastMessageTimestamp = await getLastMessageTimestamp();
+    const lastActivityTimestamp = await getLastActivityTimestamp();
     
-    if (!lastMessageTimestamp) {
+    if (!lastActivityTimestamp) {
       return null;
     }
     
     const icebreakerInterval = calculateIcebreakerInterval(config.icebreakerPeriodDays);
-    const dueTime = lastMessageTimestamp + icebreakerInterval;
+    const dueTime = lastActivityTimestamp + icebreakerInterval;
     
     return new Date(dueTime);
     

@@ -56,7 +56,7 @@ export const translations = {
     stylePoeticDesc: 'expressive, metaphorical, and artistic',
     
     // UI - Recent Messages
-    recentMessages: '💬 Recent Messages',
+    recentMessages: '💬 Messages',
     lastMessages: 'Last 5 stylized messages:',
     noMessages: 'No messages yet',
     
@@ -67,7 +67,7 @@ export const translations = {
     resetConfirm: 'Are you sure you want to reset all configuration and delete message history?',
     
     // UI - Footer
-    footer: 'No original message inspection • Vercel-friendly',
+    footer: 'Gemma • Opik • Vercel',
     
     // UI - Messages
     settingsSaved: '✓ Settings saved successfully!',
@@ -75,6 +75,41 @@ export const translations = {
     saveError: 'Error saving settings: ',
     resetFailed: 'Failed to reset configuration',
     resetError: 'Error resetting configuration: ',
+    
+    // Feedback Loop
+    feedbackLoop: 'Feedback Loop',
+    running: 'Active',
+    stopped: 'Stopped',
+    adjustments: 'Improvements',
+    userAdjustments: 'today',
+    llmAdjustments: 'LLM',
+    runNow: 'Refresh',
+    feedbackLoopCompleted: 'Feedback loop completed!',
+    improvementsApplied: 'improvement(s) applied:',
+    noImprovementsNeeded: 'No improvements needed.',
+    
+    // Feedback command
+    feedbackUsage: 'Usage: /feedback <your comment>\n\nExample: /feedback Add more warmth and emoji',
+    noMessageToRate: 'No message to provide feedback on. First receive a stylized message.',
+    feedbackThanks: 'Thank you for your feedback! I will consider your comment',
+    feedbackThanksImproved: 'Thank you for your feedback! I have improved the style based on your comment',
+    feedbackError: 'Error processing feedback. Please try again later.',
+    
+    // Metrics
+    metricCompleteness: 'Completeness',
+    metricPerspective: 'Perspective',
+    metricGrammar: 'Grammar',
+    metricAppropriateness: 'Appropriateness',
+    metricNaturalness: 'Naturalness',
+    metricClarity: 'Clarity',
+    metricUserRating: 'User Rating',
+    messageQuality: 'Message quality',
+    evaluationMetrics: 'Evaluation Metrics',
+    feedback: 'Feedback',
+    lastFeedback: 'Last feedback:',
+    loading: 'Loading...',
+    noEvaluations: 'No evaluations yet',
+    noFeedback: 'No feedback yet',
     
     // Bot messages
     welcomeUserA: '👋 Welcome! You are now registered as User A.\n\nPlease share this bot with the person you want to connect with. They will be automatically registered as User B.',
@@ -84,6 +119,9 @@ export const translations = {
     // Language names
     english: 'English',
     russian: 'Russian',
+    spanish: 'Spanish',
+    french: 'French',
+    german: 'German',
     auto: 'Auto (from sender)',
     autoDetect: 'Use sender Telegram language',
     autoDetectHelp: 'The bot will use the sender Telegram language setting'
@@ -141,7 +179,7 @@ export const translations = {
     stylePoeticDesc: 'экспрессивный, метафоричный и художественный',
     
     // UI - Recent Messages
-    recentMessages: '💬 Последние сообщения',
+    recentMessages: '💬 Cообщения',
     lastMessages: 'Последние 5 стилизованных сообщений:',
     noMessages: 'Сообщений пока нет',
     
@@ -152,7 +190,7 @@ export const translations = {
     resetConfirm: 'Вы уверены, что хотите сбросить всю конфигурацию и удалить историю сообщений?',
     
     // UI - Footer
-    footer: 'Без проверки оригинальных сообщений • Совместим с Vercel',
+    footer: 'Gemma • Opik • Vercel',
     
     // UI - Messages
     settingsSaved: '✓ Настройки успешно сохранены!',
@@ -160,6 +198,41 @@ export const translations = {
     saveError: 'Ошибка сохранения настроек: ',
     resetFailed: 'Не удалось сбросить конфигурацию',
     resetError: 'Ошибка сброса конфигурации: ',
+    
+    // Feedback Loop
+    feedbackLoop: 'Обратная связь',
+    running: '',
+    stopped: 'Остановлена',
+    adjustments: 'Улучшения',
+    userAdjustments: 'сегодня',
+    llmAdjustments: 'LLM',
+    runNow: 'Обновить',
+    feedbackLoopCompleted: 'Цикл обратной связи завершен!',
+    improvementsApplied: 'улучшение(й) применено:',
+    noImprovementsNeeded: 'Улучшения не требуются.',
+    
+    // Feedback command
+    feedbackUsage: 'Использование: /feedback <ваш комментарий>\n\nНапример: /feedback Добавь больше тепла и эмодзи',
+    noMessageToRate: 'Нет сообщения для отзыва. Сначала получите стилизованное сообщение.',
+    feedbackThanks: 'Спасибо за отзыв! Я учту ваш комментарий',
+    feedbackThanksImproved: 'Спасибо за отзыв! Я улучшил стиль на основе вашего комментария',
+    feedbackError: 'Ошибка при обработке отзыва. Попробуйте позже.',
+    
+    // Metrics
+    metricCompleteness: 'Полнота',
+    metricPerspective: 'Взгляд',
+    metricGrammar: 'Грамматика',
+    metricAppropriateness: 'Уместность',
+    metricNaturalness: 'Естественность',
+    metricClarity: 'Ясность',
+    metricUserRating: 'Оценка пользователей',
+    messageQuality: 'Качество сообщения',
+    evaluationMetrics: 'Метрики оценки',
+    feedback: 'Обратная связь',
+    lastFeedback: 'Комментарий:',
+    loading: 'Загрузка...',
+    noEvaluations: 'Оценок пока нет',
+    noFeedback: 'Отзывов пока нет',
     
     // Bot messages
     welcomeUserA: '👋 Добро пожаловать! Вы теперь зарегистрированы как Пользователь A.\n\nПожалуйста, поделитесь этим ботом с человеком, с которым хотите связаться. Он будет автоматически зарегистрирован как Пользователь B.',
@@ -169,6 +242,9 @@ export const translations = {
     // Language names
     english: 'English',
     russian: 'Русский',
+    spanish: 'Испанский',
+    french: 'Французский',
+    german: 'Немецкий',
     auto: 'Авто (от отправителя)',
     autoDetect: 'Использовать язык Telegram отправителя',
     autoDetectHelp: 'Бот будет использовать настройку языка Telegram отправителя'
@@ -205,4 +281,35 @@ export function t(language, key) {
   }
   
   return typeof value === 'string' ? value : key;
+}
+
+/**
+ * Translate style name to localized version
+ * @param {string} style - Style key (e.g., 'friendly', 'formal')
+ * @param {string} language - Language code ('en' or 'ru')
+ * @returns {string} - Translated style name
+ */
+export function translateStyleName(style, language = 'en') {
+  const styleKey = 'style' + style.charAt(0).toUpperCase() + style.slice(1);
+  const translated = t(language, styleKey);
+  return translated !== styleKey ? translated : style;
+}
+
+/**
+ * Translate language code to localized version
+ * @param {string} langCode - Language code (e.g., 'en', 'ru')
+ * @param {string} language - UI language ('en' or 'ru')
+ * @returns {string} - Translated language name
+ */
+export function translateLanguageName(langCode, language = 'en') {
+  const langMap = {
+    en: 'english',
+    ru: 'russian',
+    es: 'spanish',
+    fr: 'french',
+    de: 'german'
+  };
+  const key = langMap[langCode] || langCode;
+  const translated = t(language, key);
+  return translated !== key ? translated : langCode;
 }
