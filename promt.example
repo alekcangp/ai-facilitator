@@ -1,0 +1,16 @@
+Evaluate the quality of this message transformation.
+
+Original message: {{original_message}}
+Stylized message: {{stylized_message}}
+From: {{source_language}} → To: {{target_language}}
+Style: {{style}}
+
+Rate the message on:
+1. Naturalness: Does it sound natural?
+2. Clarity: Is it clear and easy to understand?
+3. Appropriateness: Is the style appropriate?
+4. Completeness: Does it preserve meaning?
+5. Perspective (if applicable) – Is the original perspective preserved?
+6. Grammar - Is it grammatically correct, with proper punctuation, spelling, and syntax?
+
+Scores: 0-1 for each criterion.

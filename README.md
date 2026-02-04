@@ -91,11 +91,12 @@ Automatic prompt improvement based on evaluation scores ([`src/opik-feedback.js`
 
 **Important**: Before deploying, create in Opik:
 
-1. **Create Project**: Go to Opik → Projects → Create Project
+1. **Create Project**: Go to [Opik](comet.com/opik/) → Projects → Create Project
    - Note your project name (set in `OPIK_PROJECT_NAME`)
 
 2. **Create Online Evaluation Rule**: Go to Project Page → Online Evaluations → Create New Rule
    - Select the LLM-as-a-Judge prompt to use. [Read more](https://www.comet.com/docs/opik/production/rules?from=llm#writing-your-own-llm-as-a-judge-metric)
+   - Enter promt [example](promt.example)
    - Configure metrics, for example: completeness, perspective, grammar, appropriateness, naturalness, clarity
 
 ---
@@ -129,6 +130,22 @@ Automated icebreaker checking via GitHub Actions (runs every hour)
 3. Add repository secret:
    - `CRON_URL` - `https://your-app.vercel.app/api/cron/icebreaker`
 
+---
+
+## Local Development
+
+```bash
+# Install
+npm install
+
+# Configure
+cp .env.example .env
+# Edit .env with your API keys
+
+# Run
+npm start
+# Web UI: http://localhost:3000
+```
 
 ---
 
@@ -162,23 +179,6 @@ If you reset the bot in the UI:
 - Both users need to re-register
 - Each user sends any message to the bot
 - User A registers first, User B second
-
----
-
-## Local Development
-
-```bash
-# Install
-npm install
-
-# Configure
-cp .env.example .env
-# Edit .env with your API keys
-
-# Run
-npm start
-# Web UI: http://localhost:3000
-```
 
 ---
 
