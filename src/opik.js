@@ -16,7 +16,7 @@ dotenv.config();
 export const OPIK_CONFIG = {
   apiKey: process.env.OPIK_API_KEY,
   projectName: process.env.OPIK_PROJECT_NAME,
-  workspaceName: process.env.OPIK_WORKSPACE,
+  workspaceName: process.env.OPIK_WORKSPACE || 'default',
 };
 
 // ============================================================================
@@ -96,9 +96,6 @@ export function getTraceId(trace) {
 // ============================================================================
 
 const SETTINGS_TRACE_NAME = 'bot_settings';
-let cachedSettings = null;
-let settingsCacheTime = 0;
-const SETTINGS_CACHE_TTL = 60 * 1000;
 
 export const DEFAULT_CONFIG = {
   language: 'en',
@@ -111,20 +108,13 @@ export const DEFAULT_CONFIG = {
 };
 
 export async function readConfig() {
-  const now = Date.now();
-  if (cachedSettings && (now - settingsCacheTime) < SETTINGS_CACHE_TTL) {
-    return cachedSettings;
-  }
-
-  // Try SDK search
+  // Always fetch fresh data from Opik
   if (opikClient) {
     try {
       const traces = await searchOpikTraces(1, `name="${SETTINGS_TRACE_NAME}"`);
       
       if (traces.length > 0 && traces[0]?.input) {
-        cachedSettings = { ...DEFAULT_CONFIG, ...traces[0].input };
-        settingsCacheTime = now;
-        return cachedSettings;
+        return { ...DEFAULT_CONFIG, ...traces[0].input };
       }
     } catch (error) {
       console.error('Failed to read config:', error.message);
@@ -137,7 +127,6 @@ export async function readConfig() {
 export async function writeConfig(config) {
   if (!isInitialized || !opikClient) {
     console.warn('Opik not initialized, config not persisted');
-    cachedSettings = config;
     return;
   }
 
@@ -169,12 +158,9 @@ export async function writeConfig(config) {
       });
     }
     
-    cachedSettings = config;
-    settingsCacheTime = Date.now();
     await opikClient.flush();
   } catch (error) {
     console.error('Failed to write config:', error.message);
-    cachedSettings = config;
   }
 }
 
