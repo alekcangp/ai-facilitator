@@ -16,7 +16,7 @@ dotenv.config();
 export const OPIK_CONFIG = {
   apiKey: process.env.OPIK_API_KEY,
   projectName: process.env.OPIK_PROJECT_NAME,
-  workspaceName: process.env.OPIK_WORKSPACE,
+  workspaceName: process.env.OPIK_WORKSPACE || 'default',
 };
 
 // ============================================================================
