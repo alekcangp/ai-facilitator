@@ -277,7 +277,7 @@
   <div class="container">
     <div class="header">
       <div class="language-selector">
-        <select id="languageSelect" onchange="changeLanguage()">
+        <select id="languageSelect" onchange="updateUILanguage()">
           <option value="en" __LANG_EN_SELECTED__>English</option>
           <option value="ru" __LANG_RU_SELECTED__>Русский</option>
         </select>
@@ -475,23 +475,10 @@
       }
     }
     
-    async function changeLanguage() {
+    function updateUILanguage() {
       const lang = document.getElementById('languageSelect').value;
-      try {
-        const response = await fetch('/api/config', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ language: lang })
-        });
-
-        if (response.ok) {
-          location.reload();
-        } else {
-          alert('Failed to change language');
-        }
-      } catch (error) {
-        alert('Error changing language: ' + error.message);
-      }
+      // Just reload with new language - don't save to Opik
+      location.reload();
     }
     
     document.getElementById('settingsForm').addEventListener('submit', async function(e) {
