@@ -8,7 +8,7 @@
 2. Press **Reset** button at the bottom of the page
 3. Open the bot in Telegram: [@TeteAiTeteBot](https://t.me/TeteAiTeteBot)
 4. Press **/Start** or send any message
-5. Check in control panel that user is registered
+5. Refresh control panel and check that user is registered
 6. Repeat steps 3-5 for the other user
 7. Ready! Send messages between users through the bot
 
