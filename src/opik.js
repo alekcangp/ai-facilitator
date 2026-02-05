@@ -16,6 +16,7 @@ dotenv.config();
 export const OPIK_CONFIG = {
   apiKey: process.env.OPIK_API_KEY,
   projectName: process.env.OPIK_PROJECT_NAME,
+  workspaceName: process.env.OPIK_WORKSPACE,
 };
 
 // ============================================================================
@@ -382,11 +383,12 @@ export async function deleteAllTraces() {
 
     // Delete traces via REST API
     const apiBase = 'https://www.comet.com/opik/api';
+    const workspace = OPIK_CONFIG.workspaceName || 'default';
     const response = await fetch(`${apiBase}/v1/private/traces/delete`, {
       method: 'POST',
       headers: {
         'Authorization': OPIK_CONFIG.apiKey,
-        'Comet-Workspace': 'default',
+        'Comet-Workspace': workspace,
         'Content-Type': 'application/json',
       },
       body: JSON.stringify({ ids: traceIds }),

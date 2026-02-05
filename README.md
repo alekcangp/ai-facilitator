@@ -2,6 +2,18 @@
 
 1-to-1 Telegram bot with AI message stylization, translation, and automatic icebreakers.
 
+## How to Try
+
+1. Go to control panel [facilitator-orcin.vercel.app](https://facilitator-orcin.vercel.app/)
+2. Press **Reset** button at the bottom of the page
+3. Open the bot in Telegram: [@TeteAiTeteBot](https://t.me/TeteAiTeteBot)
+4. Press **/Start** or send any message
+5. Check in control panel that user is registered
+6. Repeat steps 3-5 for the other user
+7. Ready! Send messages between users through the bot
+
+---
+
 ## Key Features
 
 - **Duplex Messaging** - Connects exactly two users via bot
@@ -27,6 +39,33 @@ User A → Telegram → Bot → Gemma Stylization → Telegram → User B
 3. Gemma rewrites message in selected style
 4. Bot forwards to other user
 5. Trace stored in Opik
+
+---
+
+## User Feedback & Auto-Improvement
+
+### User Feedback Command
+
+Users can provide feedback on stylized messages:
+
+```
+/feedback Your comment here
+```
+
+Example: `/feedback Add more warmth and emoji`
+
+**Flow** ([`src/user-feedback.js`](src/user-feedback.js)):
+1. User sends `/feedback <comment>`
+2. Bot analyzes comment using Gemma
+3. Prompt is improved based on feedback
+4. Improvement is stored in Opik
+
+### Evaluation-Based Improvement
+
+Automatic prompt improvement based on evaluation scores ([`src/opik-feedback.js`](src/opik-feedback.js)):
+- Evaluates message quality every 10 messages
+- Improves prompts when scores drop below 0.7 threshold
+- Max 10 improvements per day per style/language
 
 ---
 
@@ -60,33 +99,6 @@ User A → Telegram → Bot → Gemma Stylization → Telegram → User B
 
 ---
 
-## User Feedback & Auto-Improvement
-
-### User Feedback Command
-
-Users can provide feedback on stylized messages:
-
-```
-/feedback Your comment here
-```
-
-Example: `/feedback Add more warmth and emoji`
-
-**Flow** ([`src/user-feedback.js`](src/user-feedback.js)):
-1. User sends `/feedback <comment>`
-2. Bot analyzes comment using Gemma
-3. Prompt is improved based on feedback
-4. Improvement is stored in Opik
-
-### Evaluation-Based Improvement
-
-Automatic prompt improvement based on evaluation scores ([`src/opik-feedback.js`](src/opik-feedback.js)):
-- Evaluates message quality every 10 messages
-- Improves prompts when scores drop below 0.7 threshold
-- Max 10 improvements per day per style/language
-
----
-
 ## Opik Setup Required
 
 **Important**: Before deploying, create in Opik:
@@ -113,6 +125,7 @@ Automatic prompt improvement based on evaluation scores ([`src/opik-feedback.js`
    - `GEMINI_API_KEY` - Google Gemini API key
    - `OPIK_API_KEY` - Opik API key
    - `OPIK_PROJECT_NAME` - Your Opik project name
+   - `OPIK_WORKSPACE` - Opik workspace name (optional, defaults to 'default'). The project should exist in this workspace.
 5. Deploy
 
 ### Set Webhook
