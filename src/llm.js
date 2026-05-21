@@ -80,7 +80,7 @@ export async function stylizeMessage(originalMessage, style, customStyle = '', r
 
     const startTime = Date.now();
     const response = await ai.models.generateContent({
-      model: 'gemma-3-27b-it',
+      model: 'gemini-3.1-flash-lite',
       contents: prompt
     });
     const latency = Date.now() - startTime;
@@ -115,7 +115,7 @@ export async function stylizeMessage(originalMessage, style, customStyle = '', r
         result: finalResult,
         language: recipientLanguage,
         success: stylizedText.length >= 2,
-        model: 'gemma-3-27b-it',
+        model: 'gemini-3.1-flash-lite',
         latency,
         fallback: stylizedText.length < 2,
       },
