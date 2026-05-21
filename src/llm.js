@@ -127,7 +127,7 @@ export async function stylizeMessage(originalMessage, style, customStyle = '', r
       console.error('[Evaluation] Error:', err.message);
     });
     
-    return { text: finalResult, trace, model: 'gemma-3-27b-it', latency };
+    return { text: finalResult, trace, model: 'gemini-3.1-flash-lite', latency };
     
   } catch (error) {
     console.error('Error stylizing message:', error);
@@ -185,7 +185,7 @@ Icebreaker message:`;
 
     const startTime = Date.now();
     const response = await ai.models.generateContent({
-      model: 'gemma-3-27b-it',
+      model: 'gemini-3.1-flash-lite',
       contents: prompt
     });
     const latency = Date.now() - startTime;
@@ -201,7 +201,7 @@ Icebreaker message:`;
     const trace = createSimpleTrace(
       'generate_icebreaker',
       { style, custom_style: customStyle || null, language, message_count: recentMessages?.length || 0, context, prompt },
-      { result: icebreaker, language, success: !useFallback, model: 'gemma-3-27b-it', latency, fallback: useFallback },
+      { result: icebreaker, language, success: !useFallback, model: 'gemini-3.1-flash-lite', latency, fallback: useFallback },
       { message_type: 'icebreaker', style }
     );
     
