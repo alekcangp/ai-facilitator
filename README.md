@@ -17,7 +17,7 @@
 ## Key Features
 
 - **Duplex Messaging** - Connects exactly two users via bot
-- **AI Stylization** - Rewrites messages using Gemma LLM (7 styles)
+- **AI Stylization** - Rewrites messages using Gemini LLM (7 styles)
 - **Translation** - Auto-translate between users speaking different languages
 - **Icebreakers** - Sends conversation starters when conversation goes idle
 - **User Feedback** - Users can rate messages with `/feedback` command
@@ -27,7 +27,7 @@
 ## Architecture
 
 ```
-User A → Telegram → Bot → Gemma Stylization → Telegram → User B
+User A → Telegram → Bot → Gemini Stylization → Telegram → User B
                     ↓
                    Opik (tracing + scores + storage)
 ```
@@ -36,7 +36,7 @@ User A → Telegram → Bot → Gemma Stylization → Telegram → User B
 
 1. User sends message to bot
 2. Bot identifies sender (A or B)
-3. Gemma rewrites message in selected style
+3. Gemini rewrites message in selected style
 4. Bot forwards to other user
 5. Trace stored in Opik
 
@@ -56,7 +56,7 @@ Example: `/feedback Add more warmth and emoji`
 
 **Flow** ([`src/user-feedback.js`](src/user-feedback.js)):
 1. User sends `/feedback <comment>`
-2. Bot analyzes comment using Gemma
+2. Bot analyzes comment using Gemini
 3. Prompt is improved based on feedback
 4. Improvement is stored in Opik
 
@@ -69,11 +69,11 @@ Automatic prompt improvement based on evaluation scores ([`src/opik-feedback.js`
 
 ---
 
-## Gemma Integration
+## Gemini Integration
 
 **Purpose**: Message stylization, translation and icebreaker generation
 
-**Model**: `gemma-3-27b-it`
+**Model**: `gemini-3.1-flash-lite`
 
 **Usage** ([`src/llm.js`](src/llm.js)):
 - [`stylizeMessage()`](src/llm.js:59) - Rewrites message in requested style

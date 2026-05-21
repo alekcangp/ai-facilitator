@@ -1,7 +1,7 @@
 /**
  * LLM Service - Message Stylization using Google GenAI API
  * 
- * Uses Gemma model to rewrite messages in the selected style.
+ * Uses Gemini model to rewrite messages in the selected style.
  * Returns only the stylized text, no explanations or metadata.
  */
 
@@ -53,7 +53,7 @@ const FALLBACK_ICEBREAKERS = {
 };
 
 /**
- * Stylize a message using Gemma LLM
+ * Stylize a message using Gemini LLM
  * Uses stored improved prompts when available
  */
 export async function stylizeMessage(originalMessage, style, customStyle = '', recipientLanguage = 'en', senderLanguage = 'en', userId = null, userRole = null, username = null, conversationId = null) {

@@ -67,7 +67,7 @@ export const translations = {
     resetConfirm: 'Are you sure you want to reset all configuration and delete message history?',
     
     // UI - Footer
-    footer: 'Gemma • Opik • Vercel',
+    footer: 'Gemini • Opik • Vercel',
     
     // UI - Messages
     settingsSaved: '✓ Settings saved successfully!',
@@ -190,7 +190,7 @@ export const translations = {
     resetConfirm: 'Вы уверены, что хотите сбросить всю конфигурацию и удалить историю сообщений?',
     
     // UI - Footer
-    footer: 'Gemma • Opik • Vercel',
+    footer: 'Gemini • Opik • Vercel',
     
     // UI - Messages
     settingsSaved: '✓ Настройки успешно сохранены!',

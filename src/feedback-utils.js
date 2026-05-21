@@ -122,7 +122,7 @@ Respond with JSON:
 
   try {
     const response = await gemini.models.generateContent({
-      model: 'gemma-3-27b-it',
+      model: 'gemini-3.1-flash-lite',
       contents: improvementPrompt,
     });
 
